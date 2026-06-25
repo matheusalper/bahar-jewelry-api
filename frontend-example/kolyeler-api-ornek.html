@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kolyeler (API Örneği) | Bahar Jewelry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,440;0,9..144,600;1,9..144,400&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F2EA; --bg-soft:#EFE6D8; --panel:#FCF9F3; --ink:#2A2420; --ink-soft:#6B6055;
+    --rose:#BD7868; --rose-deep:#A35F50; --gold:#AD8A52; --line:rgba(42,36,32,.14);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--ink);font-family:'Manrope',sans-serif;padding:48px 24px;}
+  .container{max-width:1000px;margin:0 auto;}
+  .eyebrow{font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);}
+  h1{font-family:'Fraunces',serif;font-style:italic;font-weight:440;font-size:2.2rem;margin:.4em 0 .2em;}
+  .api-status{
+    margin:18px 0 36px;padding:14px 18px;border-radius:10px;font-family:'Space Mono',monospace;font-size:.82rem;
+    background:var(--panel);border:1px solid var(--line);
+  }
+  .api-status.ok{color:#3f6b4a;border-color:#bcd8c2;background:#eef6f0;}
+  .api-status.fallback{color:var(--rose-deep);border-color:#e9cfc8;background:#fbf0ed;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+  .thumb{aspect-ratio:1/1;background:var(--bg-soft);display:flex;align-items:center;justify-content:center;}
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+  .thumb svg{width:50%;height:50%;color:var(--rose-deep);}
+  .body{padding:16px;}
+  .tag{font-family:'Space Mono',monospace;font-size:.62rem;text-transform:uppercase;color:var(--ink-soft);}
+  .price{display:block;margin-top:6px;font-family:'Fraunces',serif;font-style:italic;color:var(--rose-deep);font-size:1.05rem;}
+  .skeleton{animation:pulse 1.4s ease-in-out infinite;background:var(--bg-soft);border-radius:8px;height:14px;width:70%;margin-top:8px;}
+  @keyframes pulse{0%,100%{opacity:.5;}50%{opacity:1;}}
+  code{background:var(--bg-soft);padding:2px 6px;border-radius:4px;font-family:'Space Mono',monospace;font-size:.8em;}
+</style>
+</head>
+<body>
+<div class="container">
+  <span class="eyebrow">Faz 0 · Örnek Sayfa</span>
+  <h1>Kolyeler — API'den canlı veri</h1>
+  <p style="color:var(--ink-soft);max-width:620px;">
+    Bu sayfa, mevcut bahartaki.com tasarımınızın aynısını kullanıyor — ama ürünleri artık
+    HTML'e elle yazmak yerine <code>GET /api/products?category=kolye</code> uç noktasından
+    çekiyor. API henüz veritabanına bağlı değil (Faz 1), o yüzden şu an bağlantı kurulamazsa
+    örnek veriyle gösteriyor.
+  </p>
+  <div id="apiStatus" class="api-status">API'ye bağlanılıyor…</div>
+  <div id="grid" class="grid"></div>
+</div>
+
+<script>
+  const API_URL = 'http://localhost:3000/api/products?category=kolye';
+
+  const FALLBACK_PRODUCTS = [
+    { title: 'İnce Zincir Kolye', price: '249,90', badge: 'Çok Sevilen', image: null },
+    { title: 'Taşlı Katlı Kolye', price: '279,90', badge: 'Yeni', image: null },
+    { title: 'Harf Kolye (Kişiye Özel)', price: '229,90', badge: 'Yeni', image: null },
+    { title: 'Pul Zincir Kolye', price: '259,90', badge: 'Çok Sevilen', image: null },
+  ];
+
+  const NECKLACE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+    <path d="M12 3 C7 3 7 9 12 9 C17 9 17 3 12 3 Z"/><path d="M12 9 V19"/><circle cx="12" cy="21" r="1.4"/>
+  </svg>`;
+
+  function renderProducts(products) {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = products.map(p => `
+      <div class="card">
+        <div class="thumb">${p.image ? `<img src="${p.image}" alt="${p.title}">` : NECKLACE_SVG}</div>
+        <div class="body">
+          <span class="tag">${p.badge ?? 'Kolye'}</span>
+          <h3 style="font-size:1rem;margin-top:4px;">${p.title}</h3>
+          <span class="price">₺${p.price}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function showSkeletons() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = Array.from({ length: 4 }).map(() => `
+      <div class="card">
+        <div class="thumb"></div>
+        <div class="body"><div class="skeleton"></div></div>
+      </div>
+    `).join('');
+  }
+
+  async function loadProducts() {
+    const statusEl = document.getElementById('apiStatus');
+    showSkeletons();
+    try {
+      const res = await fetch(API_URL, { signal: AbortSignal.timeout(2500) });
+      if (!res.ok) throw new Error('API henüz hazır değil (Faz 1 bekleniyor)');
+      const data = await res.json();
+      statusEl.textContent = '✅ Canlı API verisi gösteriliyor';
+      statusEl.className = 'api-status ok';
+      renderProducts(data);
+    } catch (err) {
+      statusEl.textContent = '⚠ API\'ye bağlanılamadı, örnek (fallback) veri gösteriliyor — bu normal, Faz 1 henüz kurulmadı';
+      statusEl.className = 'api-status fallback';
+      renderProducts(FALLBACK_PRODUCTS);
+    }
+  }
+
+  loadProducts();
+</script>
+</body>
+</html>

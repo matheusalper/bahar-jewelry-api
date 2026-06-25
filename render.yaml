@@ -1,0 +1,60 @@
+databases:
+  - name: bahar-postgres
+    plan: basic-256mb
+    databaseName: bahar_jewelry
+    user: bahar
+
+services:
+  - type: redis
+    name: bahar-redis
+    plan: starter
+    ipAllowList: []
+
+  - type: web
+    name: bahar-jewelry-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: bahar-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: bahar-postgres
+          property: port
+      - key: DATABASE_USER
+        fromDatabase:
+          name: bahar-postgres
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: bahar-postgres
+          property: password
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: bahar-postgres
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: bahar-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: bahar-redis
+          type: redis
+          property: port
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
