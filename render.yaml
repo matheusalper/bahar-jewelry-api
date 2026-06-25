@@ -1,11 +1,11 @@
 databases:
   - name: bahar-postgres
-    plan: basic-256mb
+    plan: starter
     databaseName: bahar_jewelry
     user: bahar
 
 services:
-  - type: redis
+  - type: keyvalue
     name: bahar-redis
     plan: starter
     ipAllowList: []
@@ -40,16 +40,11 @@ services:
         fromDatabase:
           name: bahar-postgres
           property: database
-      - key: REDIS_HOST
+      - key: REDIS_URL
         fromService:
+          type: keyvalue
           name: bahar-redis
-          type: redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          name: bahar-redis
-          type: redis
-          property: port
+          property: connectionString
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
