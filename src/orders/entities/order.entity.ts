@@ -22,6 +22,12 @@ export class Order {
   @Column()
   userId: string;
 
+  @Column({ nullable: true })
+  customerEmail: string;
+
+  @Column({ type: 'text', nullable: true })
+  shippingAddress: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   totalPrice: number;
 

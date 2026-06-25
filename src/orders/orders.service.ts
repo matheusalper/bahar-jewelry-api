@@ -25,7 +25,7 @@ export class OrdersService {
     private readonly paymentService: PaymentService,
   ) {}
 
-  async checkout(user: { id: string }, dto: CheckoutDto) {
+  async checkout(user: { id: string; email?: string }, dto: CheckoutDto) {
     const cartItems = await this.cartService.getRawItemsForUser(user.id);
     if (cartItems.length === 0) {
       throw new BadRequestException('Sepetiniz boş, sipariş oluşturulamadı');
@@ -49,7 +49,13 @@ export class OrdersService {
     ) / 100;
 
     const order = await this.orderRepo.save(
-      this.orderRepo.create({ userId: user.id, totalPrice, status: OrderStatus.PENDING }),
+      this.orderRepo.create({
+        userId: user.id,
+        customerEmail: user.email,
+        shippingAddress: dto.shippingAddress,
+        totalPrice,
+        status: OrderStatus.PENDING,
+      }),
     );
 
     const orderItems = await this.orderItemRepo.save(
