@@ -1,6 +1,6 @@
 databases:
   - name: bahar-postgres
-    plan: starter
+    plan: basic-256mb
     databaseName: bahar_jewelry
     user: bahar
 
