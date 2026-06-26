@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { OrdersService } from '../orders/orders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -6,6 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { OrderStatus, PaymentStatus } from '../orders/entities/order.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
@@ -26,6 +27,25 @@ export class AdminController {
   @Put('orders/:id/status')
   updateOrderStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.ordersService.updateOrderStatus(id, dto);
+  }
+
+  // POST /api/admin/orders/:id/approve-payment — havale siparişini onayla
+  @Post('orders/:id/approve-payment')
+  approvePayment(@Param('id') id: string) {
+    return this.ordersService.updateOrderStatus(id, {
+      paymentStatus: PaymentStatus.PAID,
+      status: OrderStatus.PENDING,
+      bankTransferMatched: true,
+    });
+  }
+
+  // POST /api/admin/orders/:id/reject-payment — havale siparişini reddet
+  @Post('orders/:id/reject-payment')
+  rejectPayment(@Param('id') id: string) {
+    return this.ordersService.updateOrderStatus(id, {
+      paymentStatus: PaymentStatus.FAILED,
+      status: OrderStatus.CANCELLED,
+    });
   }
 
   // GET /api/admin/analytics
