@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order, OrderStatus, CustomerType } from './entities/order.entity';
+import { Order, OrderStatus, PaymentStatus, CustomerType } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CheckoutDto } from './dto/checkout.dto';
 import { GuestCheckoutDto } from './dto/guest-checkout.dto';
@@ -54,14 +54,18 @@ export class OrdersService {
 
   private async finalizeOrder(order: Order, cartItems: CartLine[], products: any[]) {
     await this.orderItemRepo.save(
-      cartItems.map((item, i) =>
-        this.orderItemRepo.create({
+      cartItems.map((item, i) => {
+        const sortedImages = (products[i].images || []).slice().sort((a: any, b: any) => a.order - b.order);
+        const mainImage = sortedImages.find((img: any) => img.isMain)?.url || sortedImages[0]?.url || null;
+        return this.orderItemRepo.create({
           order,
           productId: item.productId,
+          productTitle: products[i].title,
+          productImage: mainImage,
           quantity: item.quantity,
           price: products[i].price,
-        }),
-      ),
+        });
+      }),
     );
 
     // Stok düş
@@ -71,12 +75,11 @@ export class OrdersService {
       ),
     );
 
-    // Ödeme (MVP: mock gateway anında onaylıyor)
+    // Ödeme (MVP: mock gateway anında onaylıyor). Sipariş DURUMU "Yeni Sipariş" olarak kalir,
+    // sadece ÖDEME DURUMU güncellenir — ikisi birbirinden bağımsız takip edilir.
     const payment = await this.paymentService.createPaymentIntent(order.id, order.totalPrice);
-    if (payment.success) {
-      order.status = OrderStatus.PAID;
-      await this.orderRepo.save(order);
-    }
+    order.paymentStatus = payment.success ? PaymentStatus.PAID : PaymentStatus.FAILED;
+    await this.orderRepo.save(order);
 
     const finalOrder = await this.orderRepo.findOne({ where: { id: order.id }, relations: ['items'] });
     return { ...finalOrder, payment };
@@ -93,6 +96,7 @@ export class OrdersService {
         customerType: CustomerType.REGISTERED,
         customerEmail: user.email,
         shippingAddress: dto.shippingAddress,
+        paymentMethod: dto.paymentMethod || 'card',
         totalPrice,
         status: OrderStatus.PENDING,
       }),
@@ -120,6 +124,7 @@ export class OrdersService {
         district: dto.district,
         shippingAddress: fullAddress,
         note: dto.note,
+        paymentMethod: dto.paymentMethod || 'whatsapp',
         totalPrice,
         status: OrderStatus.PENDING,
       }),
@@ -144,11 +149,21 @@ export class OrdersService {
     });
   }
 
-  // PaymentService webhook'tan sipariş durumunu güncellemek için bunu çağırır
-  async updateStatus(orderId: string, status: OrderStatus) {
+  // Admin panelden sipariş/ödeme durumu güncelleme
+  async updateOrderStatus(orderId: string, data: { status?: OrderStatus; paymentStatus?: PaymentStatus }) {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Sipariş bulunamadı');
-    order.status = status;
+    if (data.status) order.status = data.status;
+    if (data.paymentStatus) order.paymentStatus = data.paymentStatus;
     return this.orderRepo.save(order);
+  }
+
+  // Geriye dönük uyumluluk: PaymentService webhook'u eski imzayla çağırıyor olabilir
+  async updateStatus(orderId: string, status: OrderStatus) {
+    return this.updateOrderStatus(orderId, { status });
+  }
+
+  async updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus) {
+    return this.updateOrderStatus(orderId, { paymentStatus });
   }
 }
