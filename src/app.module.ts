@@ -13,6 +13,7 @@ import { RedisModule } from './redis/redis.module';
 import { SiteSettingsModule } from './site-settings/site-settings.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { BannersModule } from './banners/banners.module';
+import { AddressesModule } from './addresses/addresses.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { BannersModule } from './banners/banners.module';
     SiteSettingsModule,
     CampaignsModule,
     BannersModule,
+    AddressesModule,
   ],
 })
 export class AppModule {}
