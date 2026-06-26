@@ -17,4 +17,7 @@ export class SiteSettings {
 
   @Column({ type: 'jsonb', default: {} })
   contactInfo: Record<string, any>;
+
+  @Column({ type: 'jsonb', default: {} })
+  paymentSettings: Record<string, any>;
 }
