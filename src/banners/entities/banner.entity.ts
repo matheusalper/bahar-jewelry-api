@@ -27,6 +27,9 @@ export class Banner {
   button2Link: string;
 
   @Column({ nullable: true })
+  originalImage: string;
+
+  @Column({ nullable: true })
   desktopImage: string;
 
   @Column({ nullable: true })
@@ -34,6 +37,9 @@ export class Banner {
 
   @Column({ nullable: true })
   mobileImage: string;
+
+  @Column({ nullable: true })
+  thumbnailImage: string;
 
   @Column({ default: 0 })
   sortOrder: number;
