@@ -13,6 +13,9 @@ const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || 'product-images';
 const RECOMMENDED_MIN_WIDTH = 1920;
 const RECOMMENDED_MIN_HEIGHT = 900;
 
+// Sitenin krem zemin rengiyle eslesen letterbox arka plani
+const LETTERBOX_BG = { r: 247, g: 239, b: 227, alpha: 1 };
+
 interface Variant {
   key: 'desktop' | 'tablet' | 'mobile' | 'thumbnail';
   width: number;
@@ -21,9 +24,9 @@ interface Variant {
 
 const VARIANTS: Variant[] = [
   { key: 'desktop', width: 1920, height: 800 },
-  { key: 'tablet', width: 1024, height: 700 },
-  { key: 'mobile', width: 768, height: 900 },
-  { key: 'thumbnail', width: 400, height: 250 },
+  { key: 'tablet', width: 1200, height: 800 },
+  { key: 'mobile', width: 900, height: 900 },
+  { key: 'thumbnail', width: 500, height: 300 },
 ];
 
 @Injectable()
@@ -80,8 +83,8 @@ export class ImageProcessingService {
     const urls: Record<string, string> = { original: originalUrl };
     for (const variant of VARIANTS) {
       const resizedBuffer = await sharp(file.buffer)
-        .resize(variant.width, variant.height, { fit: 'cover', position: sharp.strategy.attention })
-        .webp({ quality: 82 })
+        .resize(variant.width, variant.height, { fit: 'contain', background: LETTERBOX_BG })
+        .webp({ quality: 90 })
         .toBuffer();
       const path = `${folder}/${variant.key === 'thumbnail' ? 'thumb' : variant.key}/${uniqueId}.webp`;
       urls[variant.key] = await this.uploadToSupabase(path, resizedBuffer, 'image/webp');
