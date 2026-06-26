@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order, OrderStatus } from '../orders/entities/order.entity';
+import { Order, PaymentStatus } from '../orders/entities/order.entity';
 import { Product } from '../products/entities/product.entity';
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -35,7 +35,7 @@ export class AdminService {
     const revenueResult = await this.orderRepo
       .createQueryBuilder('order')
       .select('COALESCE(SUM(order.totalPrice), 0)', 'sum')
-      .where('order.status = :status', { status: OrderStatus.PAID })
+      .where('order.paymentStatus = :paymentStatus', { paymentStatus: PaymentStatus.PAID })
       .getRawOne();
     const totalRevenue = Math.round(parseFloat(revenueResult.sum) * 100) / 100;
 
@@ -47,6 +47,16 @@ export class AdminService {
       .getRawMany();
     const ordersByStatus = Object.fromEntries(
       statusRows.map((row) => [row.status, parseInt(row.count, 10)]),
+    );
+
+    const paymentStatusRows = await this.orderRepo
+      .createQueryBuilder('order')
+      .select('order.paymentStatus', 'paymentStatus')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('order.paymentStatus')
+      .getRawMany();
+    const ordersByPaymentStatus = Object.fromEntries(
+      paymentStatusRows.map((row) => [row.paymentStatus, parseInt(row.count, 10)]),
     );
 
     const totalProducts = await this.productRepo.count();
@@ -61,6 +71,7 @@ export class AdminService {
       totalOrders,
       totalRevenue,
       ordersByStatus,
+      ordersByPaymentStatus,
       totalProducts,
       lowStockThreshold: LOW_STOCK_THRESHOLD,
       lowStockProducts: lowStock,
