@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 import { OrderStatus, PaymentStatus } from '../../orders/entities/order.entity';
 
 export class UpdateOrderStatusDto {
@@ -9,4 +9,13 @@ export class UpdateOrderStatusDto {
   @IsEnum(PaymentStatus)
   @IsOptional()
   paymentStatus?: PaymentStatus;
+
+  // Banka API eşleşmesi için
+  @IsBoolean()
+  @IsOptional()
+  bankTransferMatched?: boolean;
+
+  @IsString()
+  @IsOptional()
+  bankTransactionId?: string;
 }
