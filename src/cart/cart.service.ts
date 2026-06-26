@@ -164,4 +164,13 @@ export class CartService {
   async clearUserCart(userId: string) {
     await this.redis.del(`cart:user:${userId}`);
   }
+
+  // Misafir checkout sırasında ham sepet öğelerine ihtiyaç duyar
+  async getRawItemsForGuest(sessionId: string): Promise<CartItem[]> {
+    return this.readItems(`cart:guest:${sessionId}`);
+  }
+
+  async clearGuestCart(sessionId: string) {
+    await this.redis.del(`cart:guest:${sessionId}`);
+  }
 }
