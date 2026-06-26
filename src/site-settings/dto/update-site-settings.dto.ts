@@ -15,4 +15,8 @@ export class UpdateSiteSettingsDto {
   @IsObject()
   @IsOptional()
   contactInfo?: Record<string, any>;
+
+  @IsObject()
+  @IsOptional()
+  paymentSettings?: Record<string, any>;
 }
