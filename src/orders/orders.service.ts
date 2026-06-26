@@ -75,14 +75,25 @@ export class OrdersService {
       ),
     );
 
-    // Ödeme (MVP: mock gateway anında onaylıyor). Sipariş DURUMU "Yeni Sipariş" olarak kalir,
-    // sadece ÖDEME DURUMU güncellenir — ikisi birbirinden bağımsız takip edilir.
-    const payment = await this.paymentService.createPaymentIntent(order.id, order.totalPrice);
-    order.paymentStatus = payment.success ? PaymentStatus.PAID : PaymentStatus.FAILED;
+    // Ödeme durumu ödeme yöntemine göre belirlenir:
+    // - Kart (mock/gerçek): anında onaylı → PAID
+    // - Havale: müşteri ödeme yaptım diyene kadar → PENDING
+    // - Kapıda ödeme: teslimat anında → PENDING
+    // - WhatsApp: manuel takip → PENDING
+    const method = order.paymentMethod || '';
+    if (method === 'card') {
+      const payment = await this.paymentService.createPaymentIntent(order.id, order.totalPrice);
+      order.paymentStatus = payment.success ? PaymentStatus.PAID : PaymentStatus.FAILED;
+    } else if (method === 'bank_transfer') {
+      order.paymentStatus = PaymentStatus.PENDING;
+      order.status = OrderStatus.PAYMENT_WAITING;
+    } else {
+      order.paymentStatus = PaymentStatus.PENDING;
+    }
     await this.orderRepo.save(order);
 
     const finalOrder = await this.orderRepo.findOne({ where: { id: order.id }, relations: ['items'] });
-    return { ...finalOrder, payment };
+    return { ...finalOrder, paymentInfo: { method, bankTransferPending: method === 'bank_transfer' } };
   }
 
   // Üye (giriş yapmış) kullanıcı checkout
@@ -150,20 +161,53 @@ export class OrdersService {
   }
 
   // Admin panelden sipariş/ödeme durumu güncelleme
-  async updateOrderStatus(orderId: string, data: { status?: OrderStatus; paymentStatus?: PaymentStatus }) {
+  async updateOrderStatus(orderId: string, data: {
+    status?: OrderStatus;
+    paymentStatus?: PaymentStatus;
+    bankTransferMatched?: boolean;
+    bankTransactionId?: string;
+  }) {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Sipariş bulunamadı');
     if (data.status) order.status = data.status;
     if (data.paymentStatus) order.paymentStatus = data.paymentStatus;
+    if (data.bankTransferMatched !== undefined) {
+      order.bankTransferMatched = data.bankTransferMatched;
+      if (data.bankTransferMatched) order.bankMatchedAt = new Date();
+    }
+    if (data.bankTransactionId) order.bankTransactionId = data.bankTransactionId;
     return this.orderRepo.save(order);
   }
 
-  // Geriye dönük uyumluluk: PaymentService webhook'u eski imzayla çağırıyor olabilir
+  // Geriye dönük uyumluluk
   async updateStatus(orderId: string, status: OrderStatus) {
     return this.updateOrderStatus(orderId, { status });
   }
 
   async updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus) {
     return this.updateOrderStatus(orderId, { paymentStatus });
+  }
+
+  // Müşteri "Ödeme Yaptım" butonuna bastı — havale bekleniyor durumuna geçer
+  async customerPaymentDone(orderId: string, userId: string | null, customerPaymentNote: string) {
+    const where: any = { id: orderId };
+    const order = await this.orderRepo.findOne({ where, relations: ['items'] });
+    if (!order) throw new NotFoundException('Sipariş bulunamadı');
+
+    // Güvenlik: sadece siparişin sahibi veya misafir (userId null) erişebilir
+    if (userId && order.userId && order.userId !== userId) {
+      throw new NotFoundException('Sipariş bulunamadı');
+    }
+
+    // Zaten onaylanmışsa tekrar işlem yapma
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      throw new BadRequestException('Bu sipariş zaten ödenmiş olarak işaretlenmiş.');
+    }
+
+    order.paymentStatus = PaymentStatus.PENDING_VERIFICATION;
+    order.status = OrderStatus.PAYMENT_WAITING;
+    order.customerPaymentNote = customerPaymentNote || '';
+    order.clickedPaymentDoneAt = new Date();
+    return this.orderRepo.save(order);
   }
 }
