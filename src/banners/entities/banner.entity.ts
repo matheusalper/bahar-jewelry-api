@@ -5,7 +5,7 @@ export class Banner {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ default: '' })
   title: string;
 
   @Column({ nullable: true })
@@ -44,9 +44,13 @@ export class Banner {
   @Column({ default: 0 })
   sortOrder: number;
 
-  // 'contain' (Tamamını Göster, varsayılan) veya 'cover' (Alanı Doldur)
+  // 'contain' (Tamamını Göster) veya 'cover' (Alanı Doldur) — artik kullanilmiyor, geriye donuk uyumluluk icin birakildi
   @Column({ default: 'contain' })
   fitMode: string;
+
+  // Banner gorseli uzerine baslik/aciklama/buton yazisi gosterilsin mi? Varsayilan: KAPALI (sadece gorsel)
+  @Column({ default: false })
+  showTextOverlay: boolean;
 
   @Column({ default: true })
   isActive: boolean;
