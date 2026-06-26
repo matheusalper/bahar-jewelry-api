@@ -1,5 +1,20 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { BannersService } from './banners.service';
+import { ImageProcessingService } from './image-processing.service';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { ReorderBannersDto } from './dto/reorder-banners.dto';
@@ -10,7 +25,20 @@ import { UserRole } from '../users/entities/user.entity';
 
 @Controller('banners')
 export class BannersController {
-  constructor(private readonly bannersService: BannersService) {}
+  constructor(
+    private readonly bannersService: BannersService,
+    private readonly imageProcessingService: ImageProcessingService,
+  ) {}
+
+  // POST /api/banners/process-image — tek görsel yukler, desktop/tablet/mobile/thumbnail otomatik uretilir
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('process-image')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 15 * 1024 * 1024 } }))
+  async processImage(@UploadedFile() file: any) {
+    if (!file) throw new BadRequestException('Görsel dosyası gönderilmedi.');
+    return this.imageProcessingService.processAndUpload(file, 'banners');
+  }
 
   @Get()
   findAll(@Query() query: Record<string, string>) {
