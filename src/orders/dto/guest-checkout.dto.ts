@@ -28,4 +28,8 @@ export class GuestCheckoutDto {
   @IsString()
   @IsOptional()
   note?: string;
+
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
 }
