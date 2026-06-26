@@ -44,6 +44,10 @@ export class Banner {
   @Column({ default: 0 })
   sortOrder: number;
 
+  // 'contain' (Tamamını Göster, varsayılan) veya 'cover' (Alanı Doldur)
+  @Column({ default: 'contain' })
+  fitMode: string;
+
   @Column({ default: true })
   isActive: boolean;
 
