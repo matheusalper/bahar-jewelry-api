@@ -35,7 +35,9 @@ export class ProductsService {
       .skip((page - 1) * limit)
       .take(limit);
 
-    if (query.category) {
+    if (query.categorySlug) {
+      qb.andWhere('LOWER(category.slug) = LOWER(:slug)', { slug: query.categorySlug });
+    } else if (query.category) {
       qb.andWhere('LOWER(category.name) = LOWER(:category)', { category: query.category });
     }
 
