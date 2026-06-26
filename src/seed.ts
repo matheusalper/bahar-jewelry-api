@@ -2,7 +2,7 @@ import dataSource from './data-source';
 import { Category } from './products/entities/category.entity';
 import { Product } from './products/entities/product.entity';
 
-const CATEGORIES = ['Kolye', 'Küpe', 'Bilezik', 'Yüzük', 'Set', 'Saç & Bijuteri'];
+const CATEGORIES = ['Kolye', 'Küpe', 'Bilezik', 'Yüzük', 'Set', 'Saç & Bijuteri', 'Halhal'];
 
 const SAMPLE_PRODUCTS: Record<string, { title: string; price: number; stock: number }[]> = {
   Kolye: [
@@ -17,6 +17,10 @@ const SAMPLE_PRODUCTS: Record<string, { title: string; price: number; stock: num
   ],
   Bilezik: [
     { title: 'Halka Bilezik Seti', price: 329.9, stock: 6 },
+  ],
+  Halhal: [
+    { title: 'İnce Zincir Halhal', price: 199.9, stock: 14 },
+    { title: 'Taşlı Sallantılı Halhal', price: 219.9, stock: 9 },
   ],
 };
 
