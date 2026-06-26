@@ -10,6 +10,8 @@ import { OrdersModule } from './orders/orders.module';
 import { PaymentModule } from './payment/payment.module';
 import { AdminModule } from './admin/admin.module';
 import { RedisModule } from './redis/redis.module';
+import { SiteSettingsModule } from './site-settings/site-settings.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { RedisModule } from './redis/redis.module';
     OrdersModule,
     PaymentModule,
     AdminModule,
+    SiteSettingsModule,
+    CampaignsModule,
   ],
 })
 export class AppModule {}
