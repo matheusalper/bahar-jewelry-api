@@ -12,6 +12,12 @@ export class OrderItem {
   @Column()
   productId: string;
 
+  @Column({ nullable: true })
+  productTitle: string;
+
+  @Column({ nullable: true })
+  productImage: string;
+
   @Column()
   quantity: number;
 
