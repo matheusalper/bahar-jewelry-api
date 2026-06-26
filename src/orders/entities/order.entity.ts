@@ -7,22 +7,22 @@ import {
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
 
-// Siparişin "nerede olduğu" — kargo/hazırlık süreci
 export enum OrderStatus {
-  PENDING = 'pending', // Yeni Sipariş
-  PREPARING = 'preparing', // Hazırlanıyor
-  SHIPPED = 'shipped', // Kargoya Verildi
-  DELIVERED = 'delivered', // Teslim Edildi
-  CANCELLED = 'cancelled', // İptal Edildi
-  PAID = 'paid', // ESKİ DEĞER — artık yeni siparişlerde kullanılmıyor, geriye dönük uyumluluk için duruyor
+  PENDING = 'pending',               // Yeni Sipariş
+  PAYMENT_WAITING = 'payment_waiting', // Ödeme Bekleniyor (havale için)
+  PREPARING = 'preparing',           // Hazırlanıyor
+  SHIPPED = 'shipped',               // Kargoya Verildi
+  DELIVERED = 'delivered',           // Teslim Edildi
+  CANCELLED = 'cancelled',           // İptal Edildi
+  PAID = 'paid',                     // ESKİ — geriye dönük uyumluluk
 }
 
-// Ödemenin durumu — sipariş durumundan AYRI, çünkü "kargoya verildi ama ödeme iade edildi" gibi durumlar olabilir
 export enum PaymentStatus {
-  PENDING = 'pending', // Beklemede
-  PAID = 'paid', // Ödendi
-  FAILED = 'failed', // Başarısız
-  REFUNDED = 'refunded', // İade Edildi
+  PENDING = 'pending',                        // Beklemede
+  PENDING_VERIFICATION = 'pending_verification', // Müşteri havale yaptım dedi, doğrulama bekliyor
+  PAID = 'paid',                              // Ödendi
+  FAILED = 'failed',                          // Başarısız
+  REFUNDED = 'refunded',                      // İade Edildi
 }
 
 export enum CustomerType {
@@ -35,14 +35,12 @@ export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Üye siparişlerinde kullanıcı id'si; misafir siparişlerde boş kalır
   @Column({ nullable: true })
   userId: string;
 
   @Column({ type: 'enum', enum: CustomerType, default: CustomerType.REGISTERED })
   customerType: CustomerType;
 
-  // Misafir siparişlerde müşterinin yazdığı ad soyad (üye siparişlerinde boş kalabilir)
   @Column({ nullable: true })
   customerName: string;
 
@@ -65,7 +63,7 @@ export class Order {
   note: string;
 
   @Column({ nullable: true })
-  paymentMethod: string; // 'card' | 'bank_transfer' | 'cash_on_delivery' | 'whatsapp'
+  paymentMethod: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   totalPrice: number;
@@ -75,6 +73,23 @@ export class Order {
 
   @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
   paymentStatus: PaymentStatus;
+
+  // Havale / EFT için — müşteri "Ödeme Yaptım" butonuna basınca dolar
+  @Column({ type: 'text', nullable: true })
+  customerPaymentNote: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  clickedPaymentDoneAt: Date;
+
+  // Gelecekteki banka API otomatik eşleşme için
+  @Column({ default: false })
+  bankTransferMatched: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  bankMatchedAt: Date;
+
+  @Column({ nullable: true })
+  bankTransactionId: string;
 
   @OneToMany(() => OrderItem, (item) => item.order)
   items: OrderItem[];
