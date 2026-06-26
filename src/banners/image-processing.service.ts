@@ -80,7 +80,7 @@ export class ImageProcessingService {
     const urls: Record<string, string> = { original: originalUrl };
     for (const variant of VARIANTS) {
       const resizedBuffer = await sharp(file.buffer)
-        .resize(variant.width, variant.height, { fit: 'cover', position: 'centre' })
+        .resize(variant.width, variant.height, { fit: 'cover', position: sharp.strategy.attention })
         .webp({ quality: 82 })
         .toBuffer();
       const path = `${folder}/${variant.key === 'thumbnail' ? 'thumb' : variant.key}/${uniqueId}.webp`;
