@@ -3,6 +3,7 @@ import { Category } from './products/entities/category.entity';
 import { Product } from './products/entities/product.entity';
 import { SiteSettings } from './site-settings/entities/site-settings.entity';
 import { Campaign } from './campaigns/entities/campaign.entity';
+import { Banner } from './banners/entities/banner.entity';
 
 const CATEGORIES: { name: string; slug: string; description: string; sortOrder: number }[] = [
   { name: 'Kolye', slug: 'kolye', description: 'Zarafeti boynunuzda taşıyın.', sortOrder: 1 },
@@ -57,6 +58,7 @@ async function seed() {
   const productRepo = ds.getRepository(Product);
   const settingsRepo = ds.getRepository(SiteSettings);
   const campaignRepo = ds.getRepository(Campaign);
+  const bannerRepo = ds.getRepository(Banner);
 
   console.log('🌱 Kategoriler ekleniyor...');
   const categoryMap = new Map<string, Category>();
@@ -165,6 +167,27 @@ async function seed() {
     }
   } else {
     console.log('  ✓ Kampanyalar zaten mevcut, dokunulmadı');
+  }
+
+  console.log('🌱 Varsayılan banner kontrol ediliyor...');
+  const bannerCount = await bannerRepo.count();
+  if (bannerCount === 0) {
+    await bannerRepo.save(
+      bannerRepo.create({
+        title: 'Çelik Kadar Kalıcı, Bahar Kadar Zarif',
+        subtitle: 'Yeni sezon çelik takı koleksiyonu',
+        description: 'Kararma yapmayan, suya dayanıklı ve günlük şıklığınızı tamamlayan çelik takı koleksiyonları Bahar Takı\'da.',
+        button1Text: 'Koleksiyonu Keşfet',
+        button1Link: '#koleksiyon',
+        button2Text: 'Yeni Gelenleri Gör',
+        button2Link: '#one-cikanlar',
+        sortOrder: 0,
+        isActive: true,
+      }),
+    );
+    console.log('  ✓ Varsayılan banner oluşturuldu');
+  } else {
+    console.log('  ✓ Banner(lar) zaten mevcut, dokunulmadı');
   }
 
   console.log('✅ Seed tamamlandı.');
