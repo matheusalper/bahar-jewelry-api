@@ -1,9 +1,9 @@
-import { IsBoolean, IsDateString, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateBannerDto {
   @IsString()
-  @MinLength(1)
-  title: string;
+  @IsOptional()
+  title?: string;
 
   @IsString()
   @IsOptional()
@@ -56,6 +56,10 @@ export class CreateBannerDto {
   @IsString()
   @IsOptional()
   fitMode?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  showTextOverlay?: boolean;
 
   @IsBoolean()
   @IsOptional()
