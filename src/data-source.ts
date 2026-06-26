@@ -7,6 +7,7 @@ import { Order } from './orders/entities/order.entity';
 import { OrderItem } from './orders/entities/order-item.entity';
 import { SiteSettings } from './site-settings/entities/site-settings.entity';
 import { Campaign } from './campaigns/entities/campaign.entity';
+import { Banner } from './banners/entities/banner.entity';
 
 config();
 
@@ -17,7 +18,7 @@ export default new DataSource({
   username: process.env.DATABASE_USER ?? 'bahar',
   password: process.env.DATABASE_PASSWORD ?? 'bahar_dev_password',
   database: process.env.DATABASE_NAME ?? 'bahar_jewelry',
-  entities: [Product, Category, User, Order, OrderItem, SiteSettings, Campaign],
+  entities: [Product, Category, User, Order, OrderItem, SiteSettings, Campaign, Banner],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
 });
