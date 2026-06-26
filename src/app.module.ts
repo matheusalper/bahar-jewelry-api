@@ -12,6 +12,7 @@ import { AdminModule } from './admin/admin.module';
 import { RedisModule } from './redis/redis.module';
 import { SiteSettingsModule } from './site-settings/site-settings.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
+import { BannersModule } from './banners/banners.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CampaignsModule } from './campaigns/campaigns.module';
     AdminModule,
     SiteSettingsModule,
     CampaignsModule,
+    BannersModule,
   ],
 })
 export class AppModule {}
