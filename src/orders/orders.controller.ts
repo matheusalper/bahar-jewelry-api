@@ -6,6 +6,7 @@ import {
   Headers,
   Param,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { OrdersService } from './orders.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { GuestCheckoutDto } from './dto/guest-checkout.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 @Controller('orders')
 export class OrdersController {
@@ -47,5 +49,18 @@ export class OrdersController {
   @Get()
   findMine(@Req() req: any) {
     return this.ordersService.findByUser(req.user);
+  }
+
+  // POST /api/orders/:id/payment-done — müşteri "Ödeme Yaptım" butonuna bastı
+  // Hem üye hem misafir erişebilir (misafirde userId null olur)
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post(':id/payment-done')
+  paymentDone(
+    @Param('id') id: string,
+    @Body('customerPaymentNote') note: string,
+    @Req() req: any,
+  ) {
+    const userId = req.user?.id || null;
+    return this.ordersService.customerPaymentDone(id, userId, note || '');
   }
 }
