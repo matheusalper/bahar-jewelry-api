@@ -1,5 +1,12 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Category } from './category.entity';
+
+export interface ProductImage {
+  url: string;
+  alt: string;
+  order: number;
+  isMain: boolean;
+}
 
 @Entity('products')
 export class Product {
@@ -15,18 +22,42 @@ export class Product {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  // Ürün listeleme kartlarında kullanılabilecek kısa özet (opsiyonel)
+  @Column({ type: 'text', nullable: true })
+  shortDescription: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
+
+  // Doluysa ve price'tan kucukse urun "indirimde" sayilir (isSale, API yanitinda hesaplanir)
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  salePrice: number;
 
   @Column({ default: 0 })
   stock: number;
 
-  @Column('text', { array: true, default: [] })
-  images: string[];
+  @Column({ nullable: true })
+  sku: string;
+
+  // En fazla 4 gorsel: { url, alt, order, isMain }
+  @Column({ type: 'jsonb', default: [] })
+  images: ProductImage[];
+
+  @Column({ default: true })
+  isActive: boolean;
+
+  @Column({ default: false })
+  isFeatured: boolean;
+
+  @Column({ default: false })
+  isNew: boolean;
 
   @ManyToOne(() => Category, (category) => category.products)
   category: Category;
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
