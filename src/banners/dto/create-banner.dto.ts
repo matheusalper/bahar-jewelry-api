@@ -53,6 +53,10 @@ export class CreateBannerDto {
   @IsOptional()
   sortOrder?: number;
 
+  @IsString()
+  @IsOptional()
+  fitMode?: string;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
