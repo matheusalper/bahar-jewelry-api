@@ -31,6 +31,10 @@ export class CreateBannerDto {
 
   @IsString()
   @IsOptional()
+  originalImage?: string;
+
+  @IsString()
+  @IsOptional()
   desktopImage?: string;
 
   @IsString()
@@ -40,6 +44,10 @@ export class CreateBannerDto {
   @IsString()
   @IsOptional()
   mobileImage?: string;
+
+  @IsString()
+  @IsOptional()
+  thumbnailImage?: string;
 
   @IsInt()
   @IsOptional()
