@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Product } from './entities/product.entity';
+import { Product, ProductImage } from './entities/product.entity';
 import { Category } from './entities/category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductImageDto } from './dto/product-image.dto';
 
 function slugify(text: string): string {
   return text
@@ -14,6 +15,29 @@ function slugify(text: string): string {
     .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+// Gelen gorsel listesini normallestirir: en fazla 4 adet, sirali 'order',
+// ve TAM OLARAK bir adet isMain (istemci birini isaretlemisse o, yoksa ilk gorsel).
+function normalizeImages(images: ProductImageDto[] | undefined, fallbackAlt: string): ProductImage[] {
+  if (!images || images.length === 0) return [];
+  const capped = images.slice(0, 4);
+  const mainIndex = Math.max(0, capped.findIndex((img) => img.isMain === true));
+  return capped.map((img, index) => ({
+    url: img.url,
+    alt: img.alt || fallbackAlt,
+    order: index,
+    isMain: index === mainIndex,
+  }));
+}
+
+// API yanitinda kullanisli turetilmis alanlar ekler (isSale, mainImage) — DB'ye yazilmaz.
+function withComputedFields(product: Product) {
+  const sale =
+    product.salePrice != null && Number(product.salePrice) < Number(product.price);
+  const sorted = [...(product.images || [])].sort((a, b) => a.order - b.order);
+  const mainImage = sorted.find((i) => i.isMain)?.url || sorted[0]?.url || null;
+  return { ...product, images: sorted, isSale: sale, mainImage };
 }
 
 @Injectable()
@@ -35,14 +59,28 @@ export class ProductsService {
       .skip((page - 1) * limit)
       .take(limit);
 
+    // Admin panel (activeOnly=false gondererek) pasif urunleri de gorebilir;
+    // storefront varsayilan olarak sadece aktif urunleri gosterir.
+    if (query.includeInactive !== 'true') {
+      qb.andWhere('product.isActive = true');
+    }
+
     if (query.categorySlug) {
       qb.andWhere('LOWER(category.slug) = LOWER(:slug)', { slug: query.categorySlug });
     } else if (query.category) {
       qb.andWhere('LOWER(category.name) = LOWER(:category)', { category: query.category });
     }
+    if (query.featuredOnly === 'true') qb.andWhere('product.isFeatured = true');
+    if (query.newOnly === 'true') qb.andWhere('product.isNew = true');
 
     const [items, total] = await qb.getManyAndCount();
-    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      items: items.map(withComputedFields),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findBySlug(slug: string) {
@@ -51,7 +89,7 @@ export class ProductsService {
       relations: ['category'],
     });
     if (!product) throw new NotFoundException(`"${slug}" slug'lı ürün bulunamadı`);
-    return product;
+    return withComputedFields(product);
   }
 
   // Cart/Order modülleri ürünü id ile doğrulamak için bunu kullanır
@@ -61,8 +99,6 @@ export class ProductsService {
     return product;
   }
 
-  // Faz 3'te: dto.images burada doğrudan URL string'leri olarak kabul ediliyor;
-  // gerçek dosya upload (multipart -> S3) ayrı bir adımda eklenecek.
   async create(dto: CreateProductDto) {
     const category = await this.categoryRepo.findOne({ where: { id: dto.categoryId } });
     if (!category) throw new NotFoundException('Kategori bulunamadı');
@@ -77,13 +113,20 @@ export class ProductsService {
     const product = this.productRepo.create({
       title: dto.title,
       description: dto.description,
+      shortDescription: dto.shortDescription,
       price: dto.price,
+      salePrice: dto.salePrice,
       stock: dto.stock,
-      images: dto.images ?? [],
+      sku: dto.sku,
+      images: normalizeImages(dto.images, dto.title),
+      isActive: dto.isActive ?? true,
+      isFeatured: dto.isFeatured ?? false,
+      isNew: dto.isNew ?? false,
       category,
       slug,
     });
-    return this.productRepo.save(product);
+    const saved = await this.productRepo.save(product);
+    return withComputedFields(saved);
   }
 
   async update(id: string, dto: UpdateProductDto) {
@@ -99,12 +142,19 @@ export class ProductsService {
     Object.assign(product, {
       title: dto.title ?? product.title,
       description: dto.description ?? product.description,
+      shortDescription: dto.shortDescription ?? product.shortDescription,
       price: dto.price ?? product.price,
+      salePrice: dto.salePrice !== undefined ? dto.salePrice : product.salePrice,
       stock: dto.stock ?? product.stock,
-      images: dto.images ?? product.images,
+      sku: dto.sku ?? product.sku,
+      images: dto.images ? normalizeImages(dto.images, dto.title ?? product.title) : product.images,
+      isActive: dto.isActive ?? product.isActive,
+      isFeatured: dto.isFeatured ?? product.isFeatured,
+      isNew: dto.isNew ?? product.isNew,
     });
 
-    return this.productRepo.save(product);
+    const saved = await this.productRepo.save(product);
+    return withComputedFields(saved);
   }
 
   async remove(id: string) {
