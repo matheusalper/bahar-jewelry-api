@@ -4,7 +4,26 @@ import { Repository } from 'typeorm';
 import { SiteSettings } from './entities/site-settings.entity';
 import { UpdateSiteSettingsDto } from './dto/update-site-settings.dto';
 
-const DEFAULTS: Pick<SiteSettings, 'banner' | 'announcementBar' | 'socialLinks' | 'contactInfo'> = {
+const PAYMENT_SETTINGS_DEFAULT: Record<string, any> = {
+  cardEnabled: false,       // Kredi / banka kartı (iyzico/PayTR)
+  bankTransferEnabled: true, // Havale / EFT
+  cashOnDeliveryEnabled: false, // Kapıda ödeme
+  whatsappEnabled: true,    // WhatsApp sipariş
+  provider: 'mock',         // 'mock' | 'iyzico' | 'paytr'
+  testMode: true,
+  apiKey: '',
+  secretKey: '',
+  merchantId: '',
+  callbackUrl: '',
+  successUrl: '',
+  failUrl: '',
+  bankName: '',
+  iban: '',
+  accountHolder: '',
+  cashOnDeliverySurcharge: 0, // Kapıda ödemede eklenecek tutar (TL)
+};
+
+const DEFAULTS = {
   banner: {
     active: true,
     badge: 'Yeni sezon çelik takı koleksiyonu',
@@ -49,6 +68,7 @@ const DEFAULTS: Pick<SiteSettings, 'banner' | 'announcementBar' | 'socialLinks' 
     whatsappButtonText: 'WhatsApp\'tan Yaz',
     contactFormActive: true,
   },
+  paymentSettings: PAYMENT_SETTINGS_DEFAULT,
 };
 
 @Injectable()
@@ -72,6 +92,7 @@ export class SiteSettingsService {
     if (dto.announcementBar) settings.announcementBar = dto.announcementBar;
     if (dto.socialLinks) settings.socialLinks = { ...settings.socialLinks, ...dto.socialLinks };
     if (dto.contactInfo) settings.contactInfo = { ...settings.contactInfo, ...dto.contactInfo };
+    if (dto.paymentSettings) settings.paymentSettings = { ...settings.paymentSettings, ...dto.paymentSettings };
     return this.repo.save(settings);
   }
 }
