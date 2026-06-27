@@ -32,4 +32,8 @@ export class GuestCheckoutDto {
   @IsString()
   @IsOptional()
   paymentMethod?: string;
+
+  @IsString()
+  @IsOptional()
+  tcKimlik?: string;
 }
