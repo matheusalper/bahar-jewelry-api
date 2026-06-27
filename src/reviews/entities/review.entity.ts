@@ -1,6 +1,6 @@
 import {
   Column, CreateDateColumn, Entity,
-  ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn, JoinColumn,
+  ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn, JoinColumn, RelationId,
 } from 'typeorm';
 import { Product } from '../../products/entities/product.entity';
 import { User } from '../../users/entities/user.entity';
@@ -23,27 +23,28 @@ export class Review {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  productId: string;
-
-  @ManyToOne(() => Product, { onDelete: 'CASCADE' })
+  // İlişki üzerinden FK — @Column ile tekrarlanmıyor
+  @ManyToOne(() => Product, { onDelete: 'CASCADE', nullable: false })
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  @Column()
-  userId: string;
+  @RelationId((r: Review) => r.product)
+  productId: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: false })
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ nullable: true })
+  @RelationId((r: Review) => r.user)
+  userId: string;
+
+  @Column({ type: 'varchar', nullable: true })
   orderId: string;
 
   @Column({ type: 'int' })
-  rating: number; // 1-5
+  rating: number;
 
-  @Column({ nullable: true, type: 'varchar' })
+  @Column({ type: 'varchar', nullable: true })
   title: string;
 
   @Column({ type: 'text', nullable: true })
@@ -58,10 +59,10 @@ export class Review {
   @Column({ default: false })
   isVerifiedPurchase: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   approvedAt: Date;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   approvedBy: string;
 
   @CreateDateColumn()
