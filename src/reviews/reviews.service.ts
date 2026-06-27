@@ -12,17 +12,12 @@ import { OrderStatus } from '../orders/entities/order.entity';
 @Injectable()
 export class ReviewsService {
   constructor(
-    @InjectRepository(Review)
-    private readonly reviewRepo: Repository<Review>,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
-    @InjectRepository(Order)
-    private readonly orderRepo: Repository<Order>,
-    @InjectRepository(OrderItem)
-    private readonly orderItemRepo: Repository<OrderItem>,
+    @InjectRepository(Review)  private readonly reviewRepo: Repository<Review>,
+    @InjectRepository(Product) private readonly productRepo: Repository<Product>,
+    @InjectRepository(Order)   private readonly orderRepo: Repository<Order>,
+    @InjectRepository(OrderItem) private readonly orderItemRepo: Repository<OrderItem>,
   ) {}
 
-  // Ürünün onaylı yorumlarını getir
   async getProductReviews(productId: string, sort = 'newest') {
     const qb = this.reviewRepo
       .createQueryBuilder('r')
@@ -30,10 +25,14 @@ export class ReviewsService {
       .where('r.productId = :productId', { productId })
       .andWhere('r.status = :status', { status: ReviewStatus.APPROVED });
 
-    if (sort === 'highest') qb.orderBy('r.rating', 'DESC');
+    if (sort === 'highest')     qb.orderBy('r.rating', 'DESC');
     else if (sort === 'lowest') qb.orderBy('r.rating', 'ASC');
-    else if (sort === 'photos') qb.andWhere("r.images != '[]'").orderBy('r.createdAt', 'DESC');
-    else qb.orderBy('r.createdAt', 'DESC');
+    else if (sort === 'photos') {
+      qb.andWhere("jsonb_array_length(r.images) > 0");
+      qb.orderBy('r.createdAt', 'DESC');
+    } else {
+      qb.orderBy('r.createdAt', 'DESC');
+    }
 
     const reviews = await qb.getMany();
     return reviews.map(r => ({
@@ -48,7 +47,6 @@ export class ReviewsService {
     }));
   }
 
-  // Kullanıcının yorum yapabileceği ürünleri getir (teslim edilmiş, yorum yapılmamış)
   async getPendingReviewProducts(userId: string) {
     const deliveredOrders = await this.orderRepo.find({
       where: { userId, status: OrderStatus.DELIVERED },
@@ -58,7 +56,6 @@ export class ReviewsService {
     const result: any[] = [];
     for (const order of deliveredOrders) {
       for (const item of order.items || []) {
-        // Bu sipariş+ürün için yorum var mı?
         const existing = await this.reviewRepo.findOne({
           where: { userId, productId: item.productId, orderId: order.id },
         });
@@ -79,7 +76,6 @@ export class ReviewsService {
     return result;
   }
 
-  // Kullanıcının kendi yorumları
   async getUserReviews(userId: string) {
     const reviews = await this.reviewRepo.find({
       where: { userId },
@@ -98,38 +94,40 @@ export class ReviewsService {
     }));
   }
 
-  // Yorum gönder
   async createReview(
     userId: string,
     productId: string,
-    dto: { rating: number; title?: string; comment?: string; orderId?: string; images?: any[] },
+    dto: { rating: number | string; title?: string; comment?: string; orderId?: string; images?: any[] },
   ) {
-    if (dto.rating < 1 || dto.rating > 5) {
+    const rating = Number(dto.rating);
+
+    if (!rating || rating < 1 || rating > 5) {
       throw new BadRequestException('Puan 1-5 arasında olmalıdır.');
+    }
+    if (!dto.comment?.trim()) {
+      throw new BadRequestException('Yorum metni zorunludur.');
     }
 
     const product = await this.productRepo.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('Ürün bulunamadı.');
 
-    // Satın alma doğrulaması — teslim edilmiş siparişlerde bu ürün var mı?
+    // Teslim edilmiş siparişlerde bu ürün var mı?
     const deliveredOrders = await this.orderRepo.find({
       where: { userId, status: OrderStatus.DELIVERED },
       relations: ['items'],
     });
 
-    let isVerifiedPurchase = false;
-    let verifiedOrderId = dto.orderId || null;
+    let verifiedOrderId: string | null = null;
 
     for (const order of deliveredOrders) {
       const hasProduct = (order.items || []).some(i => i.productId === productId);
       if (hasProduct) {
-        isVerifiedPurchase = true;
-        if (!verifiedOrderId) verifiedOrderId = order.id;
+        verifiedOrderId = order.id;
         break;
       }
     }
 
-    if (!isVerifiedPurchase) {
+    if (!verifiedOrderId) {
       throw new ForbiddenException(
         'Bu ürüne yorum yapabilmek için satın almış ve teslim almış olmanız gerekiyor.',
       );
@@ -137,28 +135,26 @@ export class ReviewsService {
 
     // Aynı sipariş+ürün için tekrar yorum var mı?
     const existing = await this.reviewRepo.findOne({
-      where: { userId, productId, ...(verifiedOrderId ? { orderId: verifiedOrderId } : {}) },
+      where: { userId, productId, orderId: verifiedOrderId },
     });
     if (existing) {
       throw new BadRequestException('Bu ürün için zaten yorum yaptınız.');
     }
 
-    const review = this.reviewRepo.create({
-      userId,
-      productId,
-      orderId: verifiedOrderId ?? undefined,
-      rating: Number(dto.rating),
-      title: dto.title || undefined,
-      comment: dto.comment || undefined,
-      images: dto.images || [],
-      status: ReviewStatus.PENDING,
-      isVerifiedPurchase: true,
-    });
+    const review = new Review();
+    review.userId = userId;
+    review.productId = productId;
+    review.orderId = verifiedOrderId;
+    review.rating = rating;
+    review.title = dto.title?.trim() || undefined;
+    review.comment = dto.comment.trim();
+    review.images = dto.images || [];
+    review.status = ReviewStatus.PENDING;
+    review.isVerifiedPurchase = true;
 
     return this.reviewRepo.save(review);
   }
 
-  // Admin: tüm yorumlar
   async adminGetAll(status?: string) {
     const qb = this.reviewRepo
       .createQueryBuilder('r')
@@ -170,7 +166,6 @@ export class ReviewsService {
     return qb.getMany();
   }
 
-  // Admin: onayla
   async approve(reviewId: string, adminId: string) {
     const review = await this.reviewRepo.findOne({ where: { id: reviewId } });
     if (!review) throw new NotFoundException('Yorum bulunamadı.');
@@ -182,7 +177,6 @@ export class ReviewsService {
     return review;
   }
 
-  // Admin: reddet
   async reject(reviewId: string) {
     const review = await this.reviewRepo.findOne({ where: { id: reviewId } });
     if (!review) throw new NotFoundException('Yorum bulunamadı.');
@@ -193,7 +187,6 @@ export class ReviewsService {
     return review;
   }
 
-  // Admin: gizle
   async hide(reviewId: string) {
     const review = await this.reviewRepo.findOne({ where: { id: reviewId } });
     if (!review) throw new NotFoundException('Yorum bulunamadı.');
@@ -204,7 +197,6 @@ export class ReviewsService {
     return review;
   }
 
-  // Admin: sil
   async delete(reviewId: string) {
     const review = await this.reviewRepo.findOne({ where: { id: reviewId } });
     if (!review) throw new NotFoundException('Yorum bulunamadı.');
@@ -214,7 +206,6 @@ export class ReviewsService {
     return { deleted: true };
   }
 
-  // Ürün puanını yeniden hesapla
   private async updateProductRating(productId: string) {
     const approved = await this.reviewRepo.find({
       where: { productId, status: ReviewStatus.APPROVED },
@@ -222,13 +213,13 @@ export class ReviewsService {
     });
 
     const count = approved.length;
-    const breakdown: Record<string, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const breakdown: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
     let total = 0;
 
     for (const r of approved) {
-      total += r.rating;
-      const key = String(r.rating);
-      breakdown[key] = (breakdown[key] || 0) + 1;
+      total += Number(r.rating);
+      const key = String(Math.round(Number(r.rating)));
+      if (breakdown[key] !== undefined) breakdown[key]++;
     }
 
     const average = count > 0 ? Math.round((total / count) * 10) / 10 : 0;
