@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CheckoutDto {
   @IsString()
@@ -7,4 +7,10 @@ export class CheckoutDto {
   @IsString()
   @IsOptional()
   paymentMethod?: string;
+
+  // Kullanıcının uygulamak istediği BaharPara (backend gerçek değeri yeniden hesaplar)
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  baharParaUsed?: number;
 }
