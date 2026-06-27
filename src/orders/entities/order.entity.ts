@@ -101,6 +101,34 @@ export class Order {
   @OneToMany(() => OrderItem, (item) => item.order)
   items: OrderItem[];
 
+  // BaharPara sadakat sistemi alanları
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  cartSubtotal: number; // BaharPara uygulanmadan önceki sepet tutarı
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  baharParaUsed: number; // Bu siparişte kullanılan BaharPara
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  cashPayableAmount: number; // Nakit ödeme tutarı (cartSubtotal - baharParaUsed)
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  baharParaEarnRate: number; // Uygulanan kazanım oranı (ör. 0.10)
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  baharParaEarnBaseAmount: number; // Kazanımın hesaplandığı tutar
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  baharParaEarned: number; // Kazanılan BaharPara
+
+  @Column({ default: false })
+  isFirstPaidOrder: boolean; // İlk ödeme onaylı sipariş mi?
+
+  @Column({ type: 'timestamp', nullable: true })
+  baharParaAppliedAt: Date | undefined; // BaharPara kullanımı zamanı
+
+  @Column({ type: 'timestamp', nullable: true })
+  baharParaEarnedAt: Date | undefined; // BaharPara kazanımı zamanı
+
   @CreateDateColumn()
   createdAt: Date;
 }
