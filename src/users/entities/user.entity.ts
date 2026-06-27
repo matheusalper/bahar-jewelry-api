@@ -19,6 +19,10 @@ export class User {
   @Column({ nullable: true })
   phone: string;
 
+  // BaharPara sadakat sistemi bakiyesi (TL cinsinden)
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  baharParaBalance: number;
+
   @Column()
   password: string; // bcryptjs ile hash'lenmiş halde saklanır (Faz 2)
 
