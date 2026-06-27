@@ -44,7 +44,7 @@ export class Review {
   rating: number; // 1-5
 
   @Column({ nullable: true })
-  title: string;
+  title: string | null;
 
   @Column({ type: 'text', nullable: true })
   comment: string;
