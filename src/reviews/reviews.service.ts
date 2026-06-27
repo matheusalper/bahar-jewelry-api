@@ -57,7 +57,7 @@ export class ReviewsService {
     for (const order of deliveredOrders) {
       for (const item of order.items || []) {
         const existing = await this.reviewRepo.findOne({
-          where: { userId, productId: item.productId, orderId: order.id },
+          where: { user: { id: userId }, product: { id: item.productId }, orderId: order.id },
         });
         if (!existing) {
           const product = await this.productRepo.findOne({ where: { id: item.productId } });
@@ -78,7 +78,7 @@ export class ReviewsService {
 
   async getUserReviews(userId: string) {
     const reviews = await this.reviewRepo.find({
-      where: { userId },
+      where: { user: { id: userId } },
       relations: ['product'],
       order: { createdAt: 'DESC' },
     });
@@ -135,21 +135,21 @@ export class ReviewsService {
 
     // Aynı sipariş+ürün için tekrar yorum var mı?
     const existing = await this.reviewRepo.findOne({
-      where: { userId, productId, orderId: verifiedOrderId },
+      where: { user: { id: userId }, product: { id: productId }, orderId: verifiedOrderId },
     });
     if (existing) {
       throw new BadRequestException('Bu ürün için zaten yorum yaptınız.');
     }
 
     const review = new Review();
-    review.userId = userId;
-    review.productId = productId;
+    review.product = { id: productId } as any;
+    review.user    = { id: userId }    as any;
     review.orderId = verifiedOrderId;
-    review.rating = rating;
-    review.title = (dto.title?.trim() || '') as string;
+    review.rating  = rating;
+    review.title   = dto.title?.trim() || null;
     review.comment = dto.comment.trim();
-    review.images = [];
-    review.status = ReviewStatus.PENDING;
+    review.images  = [];
+    review.status  = ReviewStatus.PENDING;
     review.isVerifiedPurchase = true;
 
     // Fotoğrafları Supabase'e yükle — hata olursa yorumu yine kaydet
@@ -244,7 +244,7 @@ export class ReviewsService {
 
   private async updateProductRating(productId: string) {
     const approved = await this.reviewRepo.find({
-      where: { productId, status: ReviewStatus.APPROVED },
+      where: { product: { id: productId }, status: ReviewStatus.APPROVED },
       select: ['rating'],
     });
 
