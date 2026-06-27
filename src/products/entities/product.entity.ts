@@ -52,6 +52,9 @@ export class Product {
   @Column({ default: false })
   isNew: boolean;
 
+  @Column({ default: false })
+  isBestSeller: boolean;
+
   @ManyToOne(() => Category, (category) => category.products)
   category: Category;
 
