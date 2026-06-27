@@ -43,8 +43,8 @@ export class Review {
   @Column({ type: 'int' })
   rating: number; // 1-5
 
-  @Column({ nullable: true })
-  title: string | null;
+  @Column({ nullable: true, type: 'varchar' })
+  title: string;
 
   @Column({ type: 'text', nullable: true })
   comment: string;
