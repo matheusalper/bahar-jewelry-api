@@ -91,6 +91,13 @@ export class Order {
   @Column({ nullable: true })
   bankTransactionId: string;
 
+  // Eşleşen işlem detayları (log için)
+  @Column({ nullable: true })
+  matchedSenderName: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  matchedAmount: number;
+
   @OneToMany(() => OrderItem, (item) => item.order)
   items: OrderItem[];
 
