@@ -19,4 +19,8 @@ export class UpdateSiteSettingsDto {
   @IsObject()
   @IsOptional()
   paymentSettings?: Record<string, any>;
+
+  @IsObject()
+  @IsOptional()
+  baharParaSettings?: Record<string, any>;
 }
