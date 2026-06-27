@@ -146,7 +146,7 @@ export class ReviewsService {
     review.user    = { id: userId }    as any;
     review.orderId = verifiedOrderId;
     review.rating  = rating;
-    review.title   = dto.title?.trim() || null;
+    review.title   = dto.title?.trim() ?? '';
     review.comment = dto.comment.trim();
     review.images  = [];
     review.status  = ReviewStatus.PENDING;
