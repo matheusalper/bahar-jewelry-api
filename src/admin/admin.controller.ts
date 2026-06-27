@@ -17,19 +17,25 @@ export class AdminController {
     private readonly ordersService: OrdersService,
   ) {}
 
-  // GET /api/admin/orders?page=1&limit=20
+  // GET /api/admin/orders
   @Get('orders')
   getAllOrders(@Query() query: Record<string, string>) {
     return this.adminService.getAllOrders(query);
   }
 
-  // PUT /api/admin/orders/:id/status — sipariş ve/veya ödeme durumunu güncelle
+  // GET /api/admin/orders/:id — sipariş detayı
+  @Get('orders/:id')
+  getOrderDetail(@Param('id') id: string) {
+    return this.adminService.getOrderDetail(id);
+  }
+
+  // PUT /api/admin/orders/:id/status
   @Put('orders/:id/status')
   updateOrderStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.ordersService.updateOrderStatus(id, dto);
   }
 
-  // POST /api/admin/orders/:id/approve-payment — havale siparişini onayla
+  // POST /api/admin/orders/:id/approve-payment
   @Post('orders/:id/approve-payment')
   approvePayment(@Param('id') id: string) {
     return this.ordersService.updateOrderStatus(id, {
@@ -39,13 +45,25 @@ export class AdminController {
     });
   }
 
-  // POST /api/admin/orders/:id/reject-payment — havale siparişini reddet
+  // POST /api/admin/orders/:id/reject-payment
   @Post('orders/:id/reject-payment')
   rejectPayment(@Param('id') id: string) {
     return this.ordersService.updateOrderStatus(id, {
       paymentStatus: PaymentStatus.FAILED,
       status: OrderStatus.CANCELLED,
     });
+  }
+
+  // GET /api/admin/users?search=...
+  @Get('users')
+  getAllUsers(@Query('search') search: string) {
+    return this.adminService.getAllUsers(search);
+  }
+
+  // GET /api/admin/users/:id
+  @Get('users/:id')
+  getUserDetail(@Param('id') id: string) {
+    return this.adminService.getUserDetail(id);
   }
 
   // GET /api/admin/analytics
