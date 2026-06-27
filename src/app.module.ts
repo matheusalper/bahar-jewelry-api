@@ -15,6 +15,7 @@ import { CampaignsModule } from './campaigns/campaigns.module';
 import { BannersModule } from './banners/banners.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { BankTransfersModule } from './bank-transfers/bank-transfers.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { BaharParaModule } from './bahar-para/bahar-para.module';
 
 @Module({
@@ -46,6 +47,7 @@ import { BaharParaModule } from './bahar-para/bahar-para.module';
     BannersModule,
     AddressesModule,
     BankTransfersModule,
+    ReviewsModule,
     BaharParaModule,
   ],
 })
