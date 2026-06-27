@@ -20,4 +20,7 @@ export class SiteSettings {
 
   @Column({ type: 'jsonb', default: {} })
   paymentSettings: Record<string, any>;
+
+  @Column({ type: 'jsonb', default: {} })
+  baharParaSettings: Record<string, any>;
 }
