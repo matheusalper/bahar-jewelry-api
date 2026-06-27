@@ -60,12 +60,17 @@ export class ProductsService {
     if (query.categorySlug) {
       qb.andWhere('LOWER(category.slug) = LOWER(:slug)', { slug: query.categorySlug });
     } else if (query.category) {
-      // Tek veya virgülle ayrılmış çoklu kategori: "kolye,küpe"
-      const cats = query.category.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-      if (cats.length === 1) {
-        qb.andWhere('LOWER(category.name) = LOWER(:cat)', { cat: cats[0] });
-      } else if (cats.length > 1) {
-        qb.andWhere('LOWER(category.name) IN (:...cats)', { cats });
+      // Virgülle ayrılmış çoklu kategori: OR mantığı (kolye,küpe → kolye VEYA küpe)
+      const rawCats = query.category.split(',').map(s => s.trim()).filter(Boolean);
+      if (rawCats.length === 1) {
+        qb.andWhere('LOWER(category.name) = LOWER(:cat0)', { cat0: rawCats[0] });
+      } else if (rawCats.length > 1) {
+        // Her kategori için ayrı parametre — IN operatörü Türkçe karakter güvenli
+        const orConditions = rawCats.map((cat, i) => {
+          qb.setParameter(`cat${i}`, cat);
+          return `LOWER(category.name) = LOWER(:cat${i})`;
+        });
+        qb.andWhere(`(${orConditions.join(' OR ')})`);
       }
     }
     if (query.featuredOnly === 'true') qb.andWhere('product.isFeatured = true');
