@@ -15,6 +15,7 @@ import { CampaignsModule } from './campaigns/campaigns.module';
 import { BannersModule } from './banners/banners.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { BankTransfersModule } from './bank-transfers/bank-transfers.module';
+import { BaharParaModule } from './bahar-para/bahar-para.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { BankTransfersModule } from './bank-transfers/bank-transfers.module';
     BannersModule,
     AddressesModule,
     BankTransfersModule,
+    BaharParaModule,
   ],
 })
 export class AppModule {}
