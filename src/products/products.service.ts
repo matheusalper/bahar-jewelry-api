@@ -50,37 +50,42 @@ export class ProductsService {
   // GET /api/products?category=kolye&page=1&limit=20
   async findAll(query: Record<string, string>) {
     const page = Math.max(parseInt(query.page ?? '1', 10), 1);
-    const limit = Math.min(Math.max(parseInt(query.limit ?? '20', 10), 1), 100);
-
+    const limit = Math.min(Math.max(parseInt(query.limit ?? '40', 10), 1), 100);
     const qb = this.productRepo
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.category', 'category')
-      .orderBy('product.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .leftJoinAndSelect('product.category', 'category');
 
-    // Admin panel (activeOnly=false gondererek) pasif urunleri de gorebilir;
-    // storefront varsayilan olarak sadece aktif urunleri gosterir.
-    if (query.includeInactive !== 'true') {
-      qb.andWhere('product.isActive = true');
-    }
+    if (query.includeInactive !== 'true') qb.andWhere('product.isActive = true');
 
     if (query.categorySlug) {
       qb.andWhere('LOWER(category.slug) = LOWER(:slug)', { slug: query.categorySlug });
     } else if (query.category) {
-      qb.andWhere('LOWER(category.name) = LOWER(:category)', { category: query.category });
+      qb.andWhere('LOWER(category.name) = LOWER(:cat)', { cat: query.category });
     }
     if (query.featuredOnly === 'true') qb.andWhere('product.isFeatured = true');
-    if (query.newOnly === 'true') qb.andWhere('product.isNew = true');
+    if (query.newOnly === 'true')      qb.andWhere('product.isNew = true');
+    if (query.bestSeller === 'true')   qb.andWhere('product.isBestSeller = true');
+    if (query.inStock === 'true')      qb.andWhere('product.stock > 0');
+    if (query.onSale === 'true') {
+      qb.andWhere('product.salePrice IS NOT NULL').andWhere('product.salePrice < product.price');
+    }
 
+    const effectivePrice = '(CASE WHEN product.salePrice IS NOT NULL AND product.salePrice < product.price THEN product.salePrice ELSE product.price END)';
+    if (query.minPrice && !isNaN(parseFloat(query.minPrice))) {
+      qb.andWhere(`${effectivePrice} >= :min`, { min: parseFloat(query.minPrice) });
+    }
+    if (query.maxPrice && !isNaN(parseFloat(query.maxPrice))) {
+      qb.andWhere(`${effectivePrice} <= :max`, { max: parseFloat(query.maxPrice) });
+    }
+
+    const sort = query.sort ?? 'newest';
+    if (sort === 'price-asc')  qb.orderBy(effectivePrice, 'ASC');
+    else if (sort === 'price-desc') qb.orderBy(effectivePrice, 'DESC');
+    else qb.orderBy('product.createdAt', 'DESC');
+
+    qb.skip((page - 1) * limit).take(limit);
     const [items, total] = await qb.getManyAndCount();
-    return {
-      items: items.map(withComputedFields),
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    return { items: items.map(withComputedFields), total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findBySlug(slug: string) {
@@ -122,6 +127,7 @@ export class ProductsService {
       isActive: dto.isActive ?? true,
       isFeatured: dto.isFeatured ?? false,
       isNew: dto.isNew ?? false,
+      isBestSeller: dto.isBestSeller ?? false,
       category,
       slug,
     });
@@ -151,6 +157,7 @@ export class ProductsService {
       isActive: dto.isActive ?? product.isActive,
       isFeatured: dto.isFeatured ?? product.isFeatured,
       isNew: dto.isNew ?? product.isNew,
+      isBestSeller: dto.isBestSeller ?? product.isBestSeller,
     });
 
     const saved = await this.productRepo.save(product);
