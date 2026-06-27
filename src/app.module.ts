@@ -14,6 +14,7 @@ import { SiteSettingsModule } from './site-settings/site-settings.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { BannersModule } from './banners/banners.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { BankTransfersModule } from './bank-transfers/bank-transfers.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AddressesModule } from './addresses/addresses.module';
     CampaignsModule,
     BannersModule,
     AddressesModule,
+    BankTransfersModule,
   ],
 })
 export class AppModule {}
