@@ -75,6 +75,7 @@ export class CartService {
           price: Number(product.price),
           quantity: item.quantity,
           subtotal: Math.round(Number(product.price) * item.quantity * 100) / 100,
+          stock: product.stock,          // toplam stok — frontend limiti için
           inStock: product.stock >= item.quantity,
         };
       }),
