@@ -93,6 +93,7 @@ export class SiteSettingsService {
     if (dto.socialLinks) settings.socialLinks = { ...settings.socialLinks, ...dto.socialLinks };
     if (dto.contactInfo) settings.contactInfo = { ...settings.contactInfo, ...dto.contactInfo };
     if (dto.paymentSettings) settings.paymentSettings = { ...settings.paymentSettings, ...dto.paymentSettings };
+    if (dto.baharParaSettings) settings.baharParaSettings = { ...settings.baharParaSettings, ...dto.baharParaSettings };
     return this.repo.save(settings);
   }
 }
