@@ -146,7 +146,7 @@ export class ReviewsService {
     review.productId = productId;
     review.orderId = verifiedOrderId;
     review.rating = rating;
-    review.title = dto.title?.trim() || null;
+    review.title = (dto.title?.trim() || '') as string;
     review.comment = dto.comment.trim();
     review.status = ReviewStatus.PENDING;
     review.isVerifiedPurchase = true;
