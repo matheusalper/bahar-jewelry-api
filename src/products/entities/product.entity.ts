@@ -55,6 +55,16 @@ export class Product {
   @Column({ default: false })
   isBestSeller: boolean;
 
+  // Yorum & Puanlama — admin onaylı yorumlardan otomatik güncellenir
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  ratingAverage: number;
+
+  @Column({ default: 0 })
+  ratingCount: number;
+
+  @Column({ type: 'jsonb', default: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } })
+  ratingBreakdown: Record<string, number>;
+
   @ManyToOne(() => Category, (category) => category.products)
   category: Category;
 
