@@ -148,49 +148,45 @@ export class ReviewsService {
     review.rating = rating;
     review.title = (dto.title?.trim() || '') as string;
     review.comment = dto.comment.trim();
+    review.images = [];
     review.status = ReviewStatus.PENDING;
     review.isVerifiedPurchase = true;
 
-    // Fotoğrafları Supabase'e yükle (base64 → buffer)
-    const uploadedImages: { url: string; alt: string; order: number }[] = [];
-    const photos: any[] = (dto as any).photos || [];
-    const SUPABASE_URL = process.env.SUPABASE_URL || '';
-    const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || '';
-    const BUCKET = process.env.SUPABASE_BUCKET || 'product-images';
+    // Fotoğrafları Supabase'e yükle — hata olursa yorumu yine kaydet
+    try {
+      const photos: any[] = (dto as any).photos || [];
+      const SUPABASE_URL = process.env.SUPABASE_URL || '';
+      const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || '';
+      const BUCKET = process.env.SUPABASE_BUCKET || 'product-images';
 
-    if (photos.length > 0 && SUPABASE_URL && SUPABASE_KEY) {
-      for (let i = 0; i < Math.min(photos.length, 4); i++) {
-        try {
-          const { dataUrl } = photos[i];
-          if (!dataUrl || !dataUrl.startsWith('data:image/')) continue;
-          const [meta, b64] = dataUrl.split(',');
-          const mimeMatch = meta.match(/data:(image\/[a-z]+)/);
-          if (!mimeMatch) continue;
-          const mime = mimeMatch[1];
-          const ext  = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
-          const buffer = Buffer.from(b64, 'base64');
-          const path = `reviews/${productId}/${Date.now()}_${i}.${ext}`;
-          const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': mime,
-              apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${SUPABASE_KEY}`,
-            },
-            body: buffer as any,
-          });
-          if (res.ok) {
-            uploadedImages.push({
-              url: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`,
-              alt: `Müşteri fotoğrafı ${i + 1}`,
-              order: i,
+      if (photos.length > 0 && SUPABASE_URL && SUPABASE_KEY) {
+        const uploaded: { url: string; alt: string; order: number }[] = [];
+        for (let i = 0; i < Math.min(photos.length, 4); i++) {
+          try {
+            const dataUrl: string = photos[i]?.dataUrl || '';
+            if (!dataUrl.startsWith('data:image/')) continue;
+            const commaIdx = dataUrl.indexOf(',');
+            const meta = dataUrl.substring(0, commaIdx);
+            const b64  = dataUrl.substring(commaIdx + 1);
+            const mimeMatch = meta.match(/data:(image\/[a-z]+)/);
+            if (!mimeMatch) continue;
+            const mime = mimeMatch[1];
+            const ext  = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+            const buf  = Buffer.from(b64, 'base64');
+            const path = `reviews/${productId}/${Date.now()}_${i}.${ext}`;
+            const res  = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
+              method: 'POST',
+              headers: { 'Content-Type': mime, apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+              body: buf as any,
             });
-          }
-        } catch { /* sessiz — fotoğraf yüklenemezse yorumu yine kaydet */ }
+            if (res.ok) {
+              uploaded.push({ url: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`, alt: `Fotoğraf ${i+1}`, order: i });
+            }
+          } catch { /* sessiz */ }
+        }
+        review.images = uploaded;
       }
-    }
-
-    review.images = uploadedImages;
+    } catch { /* fotoğraf yükleme başarısız — yorumu yine kaydet */ }
 
     return this.reviewRepo.save(review);
   }
