@@ -14,6 +14,7 @@ import { GuestCheckoutDto } from './dto/guest-checkout.dto';
 import { CartService } from '../cart/cart.service';
 import { ProductsService } from '../products/products.service';
 import { PaymentService } from '../payment/payment.service';
+import { BaharParaService } from '../bahar-para/bahar-para.service';
 
 interface CartLine {
   productId: string;
@@ -29,6 +30,8 @@ export class OrdersService {
     private readonly productsService: ProductsService,
     @Inject(forwardRef(() => PaymentService))
     private readonly paymentService: PaymentService,
+    @Inject(forwardRef(() => BaharParaService))
+    private readonly baharParaService: BaharParaService,
   ) {}
 
   // Stok kontrolü + toplam fiyat hesaplama — hem üye hem misafir checkout'ta ortak kullanılır
@@ -101,6 +104,15 @@ export class OrdersService {
     const cartItems = await this.cartService.getRawItemsForUser(user.id);
     const { products, totalPrice } = await this.validateAndPrice(cartItems);
 
+    // BaharPara kullanımı — backend'de güvenli şekilde hesaplanır
+    const requestedBP = Number(dto.baharParaUsed || 0);
+    let baharParaUsed = 0;
+    if (requestedBP > 0) {
+      const { applicable } = await this.baharParaService.validateSpend(user.id, totalPrice, requestedBP);
+      baharParaUsed = applicable;
+    }
+    const cashPayable = Math.max(0, totalPrice - baharParaUsed);
+
     const order = await this.orderRepo.save(
       this.orderRepo.create({
         userId: user.id,
@@ -108,10 +120,20 @@ export class OrdersService {
         customerEmail: user.email,
         shippingAddress: dto.shippingAddress,
         paymentMethod: dto.paymentMethod || 'card',
-        totalPrice,
+        totalPrice: cashPayable, // ödeme sağlayıcısına bu tutar gider
+        cartSubtotal: totalPrice,
+        baharParaUsed,
+        cashPayableAmount: cashPayable,
         status: OrderStatus.PENDING,
       }),
     );
+
+    // BaharPara harcama transaction'ı kaydet
+    if (baharParaUsed > 0) {
+      await this.baharParaService.processSpend(order.id, user.id, baharParaUsed, totalPrice);
+      order.baharParaAppliedAt = new Date();
+      await this.orderRepo.save(order);
+    }
 
     const result = await this.finalizeOrder(order, cartItems, products);
     await this.cartService.clearUserCart(user.id);
@@ -169,6 +191,9 @@ export class OrdersService {
   }) {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Sipariş bulunamadı');
+
+    const prevPaymentStatus = order.paymentStatus;
+
     if (data.status) order.status = data.status;
     if (data.paymentStatus) order.paymentStatus = data.paymentStatus;
     if (data.bankTransferMatched !== undefined) {
@@ -176,7 +201,26 @@ export class OrdersService {
       if (data.bankTransferMatched) order.bankMatchedAt = new Date();
     }
     if (data.bankTransactionId) order.bankTransactionId = data.bankTransactionId;
-    return this.orderRepo.save(order);
+
+    await this.orderRepo.save(order);
+
+    // BaharPara tetikleyicisi: ödeme onaylandığında kazan
+    const justPaid = prevPaymentStatus !== PaymentStatus.PAID && data.paymentStatus === PaymentStatus.PAID;
+    if (justPaid && order.userId) {
+      await this.baharParaService.processEarn(orderId).catch(err =>
+        console.error('BaharPara earn error:', err.message)
+      );
+    }
+
+    // İptal edildiyse BaharPara'yı geri al
+    const justCancelled = data.status === OrderStatus.CANCELLED;
+    if (justCancelled && order.userId) {
+      await this.baharParaService.processCancellation(orderId).catch(err =>
+        console.error('BaharPara cancel error:', err.message)
+      );
+    }
+
+    return this.orderRepo.findOne({ where: { id: orderId } });
   }
 
   // Geriye dönük uyumluluk
