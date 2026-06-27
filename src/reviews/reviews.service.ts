@@ -146,11 +146,51 @@ export class ReviewsService {
     review.productId = productId;
     review.orderId = verifiedOrderId;
     review.rating = rating;
-    review.title = dto.title?.trim() || undefined;
+    review.title = dto.title?.trim() || null;
     review.comment = dto.comment.trim();
-    review.images = dto.images || [];
     review.status = ReviewStatus.PENDING;
     review.isVerifiedPurchase = true;
+
+    // Fotoğrafları Supabase'e yükle (base64 → buffer)
+    const uploadedImages: { url: string; alt: string; order: number }[] = [];
+    const photos: any[] = (dto as any).photos || [];
+    const SUPABASE_URL = process.env.SUPABASE_URL || '';
+    const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || '';
+    const BUCKET = process.env.SUPABASE_BUCKET || 'product-images';
+
+    if (photos.length > 0 && SUPABASE_URL && SUPABASE_KEY) {
+      for (let i = 0; i < Math.min(photos.length, 4); i++) {
+        try {
+          const { dataUrl } = photos[i];
+          if (!dataUrl || !dataUrl.startsWith('data:image/')) continue;
+          const [meta, b64] = dataUrl.split(',');
+          const mimeMatch = meta.match(/data:(image\/[a-z]+)/);
+          if (!mimeMatch) continue;
+          const mime = mimeMatch[1];
+          const ext  = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+          const buffer = Buffer.from(b64, 'base64');
+          const path = `reviews/${productId}/${Date.now()}_${i}.${ext}`;
+          const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': mime,
+              apikey: SUPABASE_KEY,
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+            },
+            body: buffer as any,
+          });
+          if (res.ok) {
+            uploadedImages.push({
+              url: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`,
+              alt: `Müşteri fotoğrafı ${i + 1}`,
+              order: i,
+            });
+          }
+        } catch { /* sessiz — fotoğraf yüklenemezse yorumu yine kaydet */ }
+      }
+    }
+
+    review.images = uploadedImages;
 
     return this.reviewRepo.save(review);
   }
