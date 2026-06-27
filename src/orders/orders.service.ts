@@ -78,13 +78,17 @@ export class OrdersService {
       ),
     );
 
-    // Ödeme durumu ödeme yöntemine göre belirlenir:
-    // - Kart (mock/gerçek): anında onaylı → PAID
-    // - Havale: müşteri ödeme yaptım diyene kadar → PENDING
-    // - Kapıda ödeme: teslimat anında → PENDING
-    // - WhatsApp: manuel takip → PENDING
+    // Ödeme durumu ödeme yöntemine göre:
+    // - baharpara (tam BaharPara): anında PAID
+    // - card (mock): anında PAID
+    // - bank_transfer: PENDING → müşteri "Ödeme Yaptım" basınca değişir
+    // - cash_on_delivery / whatsapp: PENDING
     const method = order.paymentMethod || '';
-    if (method === 'card') {
+    if (method === 'baharpara' || order.cashPayableAmount === 0) {
+      // Tam BaharPara — ek ödeme yok, anında tamamlandı
+      order.paymentStatus = PaymentStatus.PAID;
+      order.status = OrderStatus.PENDING;
+    } else if (method === 'card') {
       const payment = await this.paymentService.createPaymentIntent(order.id, order.totalPrice);
       order.paymentStatus = payment.success ? PaymentStatus.PAID : PaymentStatus.FAILED;
     } else if (method === 'bank_transfer') {
@@ -102,35 +106,66 @@ export class OrdersService {
   // Üye (giriş yapmış) kullanıcı checkout
   async checkout(user: { id: string; email?: string }, dto: CheckoutDto) {
     const cartItems = await this.cartService.getRawItemsForUser(user.id);
-    const { products, totalPrice } = await this.validateAndPrice(cartItems);
+    const { products, totalPrice: cartSubtotal } = await this.validateAndPrice(cartItems);
 
-    // BaharPara kullanımı — backend'de güvenli şekilde hesaplanır
+    // ── BaharPara güvenlik kontrolü (tüm hesaplamalar backend'de) ──────────
     const requestedBP = Number(dto.baharParaUsed || 0);
     let baharParaUsed = 0;
-    if (requestedBP > 0) {
-      const { applicable } = await this.baharParaService.validateSpend(user.id, totalPrice, requestedBP);
-      baharParaUsed = applicable;
-    }
-    const cashPayable = Math.max(0, totalPrice - baharParaUsed);
 
+    if (requestedBP > 0) {
+      const settings = await this.baharParaService.getSettings();
+      if (!settings.isActive) {
+        throw new BadRequestException('BaharPara sistemi şu an aktif değil.');
+      }
+
+      // Kullanıcının gerçek bakiyesini doğrula
+      const realBalance = await this.baharParaService.getBalance(user.id);
+      if (requestedBP > realBalance) {
+        throw new BadRequestException(`Yetersiz BaharPara bakiyesi. Mevcut: ${realBalance} TL`);
+      }
+      if (requestedBP > cartSubtotal) {
+        throw new BadRequestException('BaharPara tutarı sepet toplamını aşamaz.');
+      }
+
+      baharParaUsed = Math.min(requestedBP, realBalance, cartSubtotal);
+      baharParaUsed = Math.floor(baharParaUsed * 100) / 100;
+    }
+
+    const cashPayableAmount = Math.max(0, Math.round((cartSubtotal - baharParaUsed) * 100) / 100);
+
+    // ── Ödeme yöntemi validasyonu ──────────────────────────────────────────
+    let paymentMethod = dto.paymentMethod || '';
+
+    if (cashPayableAmount === 0) {
+      // Tam BaharPara ile ödeme — yöntem seçmeye gerek yok
+      paymentMethod = 'baharpara';
+    } else {
+      // Nakit ödeme gerekiyor — yöntem seçimi zorunlu
+      const validMethods = ['card', 'bank_transfer', 'cash_on_delivery', 'whatsapp'];
+      if (!paymentMethod || !validMethods.includes(paymentMethod)) {
+        throw new BadRequestException('Lütfen ödeme yöntemi seçiniz.');
+      }
+    }
+
+    // ── Siparişi kaydet ───────────────────────────────────────────────────
     const order = await this.orderRepo.save(
       this.orderRepo.create({
         userId: user.id,
         customerType: CustomerType.REGISTERED,
         customerEmail: user.email,
         shippingAddress: dto.shippingAddress,
-        paymentMethod: dto.paymentMethod || 'card',
-        totalPrice: cashPayable, // ödeme sağlayıcısına bu tutar gider
-        cartSubtotal: totalPrice,
+        paymentMethod,
+        totalPrice: cashPayableAmount,
+        cartSubtotal,
         baharParaUsed,
-        cashPayableAmount: cashPayable,
+        cashPayableAmount,
         status: OrderStatus.PENDING,
       }),
     );
 
-    // BaharPara harcama transaction'ı kaydet
+    // BaharPara harcama — bakiyeyi düş, transaction kaydet
     if (baharParaUsed > 0) {
-      await this.baharParaService.processSpend(order.id, user.id, baharParaUsed, totalPrice);
+      await this.baharParaService.processSpend(order.id, user.id, baharParaUsed, cartSubtotal);
       order.baharParaAppliedAt = new Date();
       await this.orderRepo.save(order);
     }
