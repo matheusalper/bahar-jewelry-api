@@ -129,4 +129,11 @@ export class AdminService {
 
     return { totalOrders, totalRevenue, ordersByStatus, ordersByPaymentStatus, totalProducts, totalCustomers, lowStockThreshold: LOW_STOCK_THRESHOLD, lowStockProducts: lowStock };
   }
+
+  async deleteOrder(orderId: string) {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new Error('Sipariş bulunamadı');
+    await this.orderRepo.remove(order);
+    return { deleted: true, id: orderId };
+  }
 }
