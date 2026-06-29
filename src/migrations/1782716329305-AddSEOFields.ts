@@ -19,15 +19,8 @@ export class AddSEOFields1782716329305 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "site_settings" ADD COLUMN IF NOT EXISTS "redirectRules" jsonb NOT NULL DEFAULT '[]'`);
         await queryRunner.query(`ALTER TABLE "site_settings" ADD COLUMN IF NOT EXISTS "robotsTxt" text`);
 
-        // reviews.status — varchar'dan enum'a geç (sadece yoksa)
-        const enumExists = await queryRunner.query(
-            `SELECT 1 FROM pg_type WHERE typname = 'reviews_status_enum'`
-        );
-        if (!enumExists.length) {
-            await queryRunner.query(`CREATE TYPE "public"."reviews_status_enum" AS ENUM('pending', 'approved', 'rejected', 'hidden')`);
-            await queryRunner.query(`ALTER TABLE "reviews" ALTER COLUMN "status" TYPE "public"."reviews_status_enum" USING "status"::"public"."reviews_status_enum"`);
-        }
-
+        // reviews.status — varchar olarak kalabilir, enum dönüşümü gerekmiyor
+        // (TypeORM entity'de enum tanımlı olsa da DB'de varchar çalışır)
         // FK constraint — sadece yoksa ekle
         await queryRunner.query(`
             DO $$ BEGIN
