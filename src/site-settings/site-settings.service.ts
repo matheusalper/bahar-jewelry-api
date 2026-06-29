@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository as InjectRepo } from '@nestjs/typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SiteSettings } from './entities/site-settings.entity';
@@ -86,6 +87,30 @@ export class SiteSettingsService {
     return settings;
   }
 
+
+  async generateSitemap(): Promise<string> {
+    const SITE = 'https://bahartaki.com';
+    const now = new Date().toISOString().split('T')[0];
+    // Static pages
+    const staticUrls = [
+      { loc: SITE, priority: '1.0', changefreq: 'daily' },
+      { loc: `${SITE}/products.html`, priority: '0.9', changefreq: 'daily' },
+      { loc: `${SITE}/new-arrivals.html`, priority: '0.8', changefreq: 'weekly' },
+      { loc: `${SITE}/bestsellers.html`, priority: '0.8', changefreq: 'weekly' },
+      { loc: `${SITE}/sale.html`, priority: '0.7', changefreq: 'daily' },
+    ];
+    const urls = staticUrls.map(u =>
+      `  <url><loc>${u.loc}</loc><lastmod>${now}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
+    ).join('\n');
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
+  }
+
+  async getRobotsTxt(): Promise<string> {
+    const settings = await this.getSettings();
+    if (settings.robotsTxt) return settings.robotsTxt;
+    return `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\n\nSitemap: https://bahartaki.com/sitemap.xml\n`;
+  }
+
   async updateSettings(dto: UpdateSiteSettingsDto): Promise<SiteSettings> {
     const settings = await this.getSettings();
     if (dto.banner) settings.banner = { ...settings.banner, ...dto.banner };
@@ -94,6 +119,10 @@ export class SiteSettingsService {
     if (dto.contactInfo) settings.contactInfo = { ...settings.contactInfo, ...dto.contactInfo };
     if (dto.paymentSettings) settings.paymentSettings = { ...settings.paymentSettings, ...dto.paymentSettings };
     if (dto.baharParaSettings) settings.baharParaSettings = { ...settings.baharParaSettings, ...dto.baharParaSettings };
+    if (dto.seoSettings) settings.seoSettings = { ...settings.seoSettings, ...dto.seoSettings };
+    if (dto.trackingCodes) settings.trackingCodes = { ...settings.trackingCodes, ...dto.trackingCodes };
+    if (dto.redirectRules !== undefined) settings.redirectRules = dto.redirectRules;
+    if (dto.robotsTxt !== undefined) settings.robotsTxt = dto.robotsTxt;
     return this.repo.save(settings);
   }
 }
