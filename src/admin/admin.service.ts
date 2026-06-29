@@ -132,6 +132,15 @@ export class AdminService {
     return { totalOrders, totalRevenue, ordersByStatus, ordersByPaymentStatus, totalProducts, totalCustomers, lowStockThreshold: LOW_STOCK_THRESHOLD, lowStockProducts: lowStock };
   }
 
+  async updateOrderTracking(orderId: string, dto: { trackingNumber?: string; trackingUrl?: string; cargoCompany?: string }) {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new Error('Sipariş bulunamadı');
+    if (dto.trackingNumber !== undefined) order.trackingNumber = dto.trackingNumber;
+    if (dto.trackingUrl     !== undefined) order.trackingUrl    = dto.trackingUrl;
+    if (dto.cargoCompany    !== undefined) order.cargoCompany   = dto.cargoCompany;
+    return this.orderRepo.save(order);
+  }
+
   async deleteOrder(orderId: string) {
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
