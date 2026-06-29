@@ -10,10 +10,10 @@ import { UserRole } from '../users/entities/user.entity';
 export class AiController {
 
   @Post('generate')
-  async generate(@Body() body: { prompt: string; type?: string }) {
+  async generate(@Body() body: { prompt: string; type?: string; imageBase64?: string; imageMediaType?: string }) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return { error: 'ANTHROPIC_API_KEY ayarlanmamış. Render → Environment\'a ekleyin.' };
+      return { error: 'ANTHROPIC_API_KEY ayarlanmamış.' };
     }
 
     const systemPrompt = body.type === 'blog'
@@ -24,16 +24,36 @@ export class AiController {
 ÜRÜN ADI KURALLARI:
 - Zarif, şık ve butik bir dil kullan
 - Ürün adı "316L" ile başlamasın
-- Örnekler: "Zarif Taşlı Çelik Kolye", "Zirkon Taşlı Çelik Bileklik", "İnce Zincirli Çelik Küpe", "Minimalist Çelik Yüzük", "Ay Yıldız Çelik Kolye"
-- Ürünün özelliğini, şeklini veya taşını yansıt
+- Örnekler: "Zarif Taşlı Çelik Kolye", "Zirkon Taşlı Çelik Bileklik", "İnce Zincirli Çelik Küpe", "Minimalist Çelik Yüzük", "Toka", "Saç Tokası"
+- Ürünün tam olarak ne olduğunu belirt — toka ise toka, küpe ise küpe yaz
 - Max 50 karakter, Türkçe
 
 AÇIKLAMA KURALLARI:
-- Paslanmaz çelik malzemeyi doğal bir şekilde belirt
-- Kararma yapmaz ve suya dayanıklı özelliklerini vurgula
-- Şık ve premium bir dil kullan
-- Türkçe, 80-100 kelime`
-      : 'Sen Bahar Accessory & Jewelry (bahartaki.com) için SEO içeriği üreten bir uzmansın. Bu marka paslanmaz çelik takı satmaktadır. Türkçe, kısa ve etkili yaz.';
+- Paslanmaz çelik malzemeyi doğal belirt
+- Kararma yapmaz ve suya dayanıklı vurgula
+- Şık ve premium dil kullan, 80-100 kelime`
+      : 'Sen Bahar Accessory & Jewelry (bahartaki.com) için SEO içeriği üreten bir uzmansın. Türkçe, kısa ve etkili yaz.';
+
+    // Görsel varsa vision modeli kullan
+    const model = body.imageBase64 ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
+
+    // Mesaj içeriği
+    let messageContent: any;
+    if (body.imageBase64) {
+      messageContent = [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: body.imageMediaType || 'image/jpeg',
+            data: body.imageBase64,
+          },
+        },
+        { type: 'text', text: body.prompt },
+      ];
+    } else {
+      messageContent = body.prompt;
+    }
 
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -44,10 +64,10 @@ AÇIKLAMA KURALLARI:
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model,
           max_tokens: 2000,
           system: systemPrompt,
-          messages: [{ role: 'user', content: body.prompt }],
+          messages: [{ role: 'user', content: messageContent }],
         }),
       });
 
