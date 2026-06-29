@@ -65,6 +65,28 @@ export class Product {
   @Column({ type: 'jsonb', default: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } })
   ratingBreakdown: Record<string, number>;
 
+  // SEO alanları
+  @Column({ type: 'varchar', nullable: true })
+  seoTitle: string;
+
+  @Column({ type: 'text', nullable: true })
+  seoDescription: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  seoKeywords: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  canonicalUrl: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  ogTitle: string;
+
+  @Column({ type: 'text', nullable: true })
+  ogDescription: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  ogImage: string;
+
   @ManyToOne(() => Category, (category) => category.products)
   category: Category;
 
