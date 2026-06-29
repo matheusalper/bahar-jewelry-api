@@ -5,6 +5,8 @@ import { SiteSettings } from './entities/site-settings.entity';
 import { UpdateSiteSettingsDto } from './dto/update-site-settings.dto';
 import { Product } from '../products/entities/product.entity';
 import { Category } from '../products/entities/category.entity';
+import { BlogPost } from '../blog/entities/blog-post.entity';
+import { BlogStatus } from '../blog/entities/blog-post.entity';
 
 const PAYMENT_SETTINGS_DEFAULT: Record<string, any> = {
   cardEnabled: false,       // Kredi / banka kartı (iyzico/PayTR)
@@ -79,6 +81,7 @@ export class SiteSettingsService {
     @InjectRepository(SiteSettings) private readonly repo: Repository<SiteSettings>,
     @InjectRepository(Product) private readonly productRepo: Repository<Product>,
     @InjectRepository(Category) private readonly categoryRepo: Repository<Category>,
+    @InjectRepository(BlogPost) private readonly blogRepo: Repository<BlogPost>,
   ) {}
 
   async getSettings(): Promise<SiteSettings> {
@@ -129,7 +132,19 @@ export class SiteSettingsService {
       `  <url><loc>${u.loc}</loc><lastmod>${now}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
     ).join('\n');
 
-    const allUrls = [staticXml, ...categoryUrls, ...productUrls].join('\n');
+    // Blog yazıları
+    let blogUrls: string[] = [];
+    try {
+      const posts = await this.blogRepo.find({
+        where: { status: BlogStatus.PUBLISHED },
+        select: ['slug', 'updatedAt'],
+      });
+      blogUrls = posts.map(p =>
+        `  <url><loc>${SITE}/blog-post.html?slug=${p.slug}</loc><lastmod>${new Date(p.updatedAt).toISOString().split('T')[0]}</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>`
+      );
+    } catch {}
+
+    const allUrls = [staticXml, ...categoryUrls, ...productUrls, ...blogUrls].join('\n');
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${allUrls}\n</urlset>`;
   }
 
