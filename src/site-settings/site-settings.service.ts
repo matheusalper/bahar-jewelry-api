@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository as InjectRepo } from '@nestjs/typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SiteSettings } from './entities/site-settings.entity';
 import { UpdateSiteSettingsDto } from './dto/update-site-settings.dto';
+import { Product } from '../products/entities/product.entity';
+import { Category } from '../products/entities/category.entity';
 
 const PAYMENT_SETTINGS_DEFAULT: Record<string, any> = {
   cardEnabled: false,       // Kredi / banka kartı (iyzico/PayTR)
@@ -76,6 +77,8 @@ const DEFAULTS = {
 export class SiteSettingsService {
   constructor(
     @InjectRepository(SiteSettings) private readonly repo: Repository<SiteSettings>,
+    @InjectRepository(Product) private readonly productRepo: Repository<Product>,
+    @InjectRepository(Category) private readonly categoryRepo: Repository<Category>,
   ) {}
 
   async getSettings(): Promise<SiteSettings> {
@@ -91,7 +94,7 @@ export class SiteSettingsService {
   async generateSitemap(): Promise<string> {
     const SITE = 'https://bahartaki.com';
     const now = new Date().toISOString().split('T')[0];
-    // Static pages
+
     const staticUrls = [
       { loc: SITE, priority: '1.0', changefreq: 'daily' },
       { loc: `${SITE}/products.html`, priority: '0.9', changefreq: 'daily' },
@@ -99,10 +102,35 @@ export class SiteSettingsService {
       { loc: `${SITE}/bestsellers.html`, priority: '0.8', changefreq: 'weekly' },
       { loc: `${SITE}/sale.html`, priority: '0.7', changefreq: 'daily' },
     ];
-    const urls = staticUrls.map(u =>
+
+    // Ürünleri çek
+    let productUrls: string[] = [];
+    try {
+      const products = await this.productRepo.find({
+        where: { isActive: true },
+        select: ['slug', 'updatedAt'],
+        order: { updatedAt: 'DESC' },
+      });
+      productUrls = products.map(p =>
+        `  <url><loc>${SITE}/product.html?slug=${p.slug}</loc><lastmod>${new Date(p.updatedAt).toISOString().split('T')[0]}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
+      );
+    } catch { /* ürünler alınamazsa devam et */ }
+
+    // Kategorileri çek
+    let categoryUrls: string[] = [];
+    try {
+      const cats = await this.categoryRepo.find({ select: ['slug'] });
+      categoryUrls = cats.map(c =>
+        `  <url><loc>${SITE}/kategori.html?slug=${c.slug}</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
+      );
+    } catch { /* kategoriler alınamazsa devam et */ }
+
+    const staticXml = staticUrls.map(u =>
       `  <url><loc>${u.loc}</loc><lastmod>${now}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
     ).join('\n');
-    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
+
+    const allUrls = [staticXml, ...categoryUrls, ...productUrls].join('\n');
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${allUrls}\n</urlset>`;
   }
 
   async getRobotsTxt(): Promise<string> {
