@@ -34,7 +34,7 @@ import { BaharParaModule } from './bahar-para/bahar-para.module';
         password: config.get('DATABASE_PASSWORD', 'bahar_dev_password'),
         database: config.get('DATABASE_NAME', 'bahar_jewelry'),
         autoLoadEntities: true,
-        synchronize: false, // Faz 1: migration kullanıyoruz, synchronize KAPALI (production alışkanlığı)
+        synchronize: false,
       }),
     }),
     UsersModule,
