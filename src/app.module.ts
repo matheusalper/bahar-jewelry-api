@@ -15,6 +15,8 @@ import { CampaignsModule } from './campaigns/campaigns.module';
 import { BannersModule } from './banners/banners.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { BankTransfersModule } from './bank-transfers/bank-transfers.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { UploadModule } from './upload/upload.module';
 import { BlogModule } from './blog/blog.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { BaharParaModule } from './bahar-para/bahar-para.module';
@@ -48,6 +50,8 @@ import { BaharParaModule } from './bahar-para/bahar-para.module';
     BannersModule,
     AddressesModule,
     BankTransfersModule,
+    MulterModule.register({ storage: undefined }),
+    UploadModule,
     BlogModule,
     ReviewsModule,
     BaharParaModule,
