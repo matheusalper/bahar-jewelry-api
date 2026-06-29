@@ -129,6 +129,16 @@ export class Order {
   @Column({ type: 'timestamp', nullable: true })
   baharParaEarnedAt: Date | undefined; // BaharPara kazanımı zamanı
 
+  // Kargo takip
+  @Column({ type: 'varchar', nullable: true })
+  trackingNumber: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  trackingUrl: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  cargoCompany: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }
