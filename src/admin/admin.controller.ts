@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { OrdersService } from '../orders/orders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -33,6 +33,12 @@ export class AdminController {
   @Put('orders/:id/status')
   updateOrderStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.ordersService.updateOrderStatus(id, dto);
+  }
+
+  // DELETE /api/admin/orders/:id — siparişi sil
+  @Delete('orders/:id')
+  deleteOrder(@Param('id') id: string) {
+    return this.adminService.deleteOrder(id);
   }
 
   // POST /api/admin/orders/:id/approve-payment
