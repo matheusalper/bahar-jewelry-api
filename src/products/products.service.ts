@@ -169,6 +169,7 @@ export class ProductsService {
       isFeatured: dto.isFeatured ?? product.isFeatured,
       isNew: dto.isNew ?? product.isNew,
       isBestSeller: dto.isBestSeller ?? product.isBestSeller,
+      relatedProductIds: dto.relatedProductIds ?? product.relatedProductIds ?? [],
     });
 
     const saved = await this.productRepo.save(product);
