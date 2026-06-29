@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, Put, Res, UseGuards } from '@nestjs/common';
+import { Response } from 'express';
 import { SiteSettingsService } from './site-settings.service';
 import { UpdateSiteSettingsDto } from './dto/update-site-settings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -22,5 +23,22 @@ export class SiteSettingsController {
   @Put()
   updateSettings(@Body() dto: UpdateSiteSettingsDto) {
     return this.siteSettingsService.updateSettings(dto);
+  }
+  // GET /api/seo/sitemap.xml
+  @Get('/seo/sitemap')
+  @Header('Content-Type', 'application/xml')
+  async getSitemap(@Res() res: Response) {
+    const xml = await this.siteSettingsService.generateSitemap();
+    res.set('Content-Type', 'application/xml');
+    res.send(xml);
+  }
+
+  // GET /api/seo/robots
+  @Get('/seo/robots')
+  @Header('Content-Type', 'text/plain')
+  async getRobots(@Res() res: Response) {
+    const txt = await this.siteSettingsService.getRobotsTxt();
+    res.set('Content-Type', 'text/plain');
+    res.send(txt);
   }
 }
