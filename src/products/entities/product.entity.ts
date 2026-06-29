@@ -87,6 +87,10 @@ export class Product {
   @Column({ type: 'varchar', nullable: true })
   ogImage: string;
 
+  // Kombin — uyumlu ürün ID'leri
+  @Column({ type: 'jsonb', default: [] })
+  relatedProductIds: string[];
+
   @ManyToOne(() => Category, (category) => category.products)
   category: Category;
 
