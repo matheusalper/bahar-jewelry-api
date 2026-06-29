@@ -23,4 +23,18 @@ export class UpdateSiteSettingsDto {
   @IsObject()
   @IsOptional()
   baharParaSettings?: Record<string, any>;
+
+  @IsObject()
+  @IsOptional()
+  seoSettings?: Record<string, any>;
+
+  @IsObject()
+  @IsOptional()
+  trackingCodes?: Record<string, any>;
+
+  @IsOptional()
+  redirectRules?: any[];
+
+  @IsOptional()
+  robotsTxt?: string;
 }
