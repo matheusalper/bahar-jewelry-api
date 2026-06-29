@@ -66,4 +66,8 @@ export class CreateProductDto {
   @IsBoolean()
   @IsOptional()
   isBestSeller?: boolean;
+
+  @IsArray()
+  @IsOptional()
+  relatedProductIds?: string[];
 }
