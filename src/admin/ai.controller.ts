@@ -17,8 +17,23 @@ export class AiController {
     }
 
     const systemPrompt = body.type === 'blog'
-      ? 'Sen Bahar Accessory & Jewelry (bahartaki.com) için SEO odaklı blog içeriği üreten bir uzman yazarsın. Türkçe, akıcı ve profesyonel yaz.'
-      : 'Sen Bahar Accessory & Jewelry (bahartaki.com) için SEO içeriği üreten bir uzmansın. Türkçe, kısa ve etkili yaz.';
+      ? 'Sen Bahar Accessory & Jewelry (bahartaki.com) için SEO odaklı blog içeriği üreten bir uzman yazarsın. Bu marka 316L paslanmaz çelik takı satmaktadır — kararma yapmaz, suya dayanıklı. Türkçe, akıcı ve profesyonel yaz.'
+      : body.type === 'product_vision'
+      ? `Sen Bahar Accessory & Jewelry için ürün analizi yapan bir uzmansın. Bu marka paslanmaz çelik takı satmaktadır — gümüş veya altın değil.
+
+ÜRÜN ADI KURALLARI:
+- Zarif, şık ve butik bir dil kullan
+- Ürün adı "316L" ile başlamasın
+- Örnekler: "Zarif Taşlı Çelik Kolye", "Zirkon Taşlı Çelik Bileklik", "İnce Zincirli Çelik Küpe", "Minimalist Çelik Yüzük", "Ay Yıldız Çelik Kolye"
+- Ürünün özelliğini, şeklini veya taşını yansıt
+- Max 50 karakter, Türkçe
+
+AÇIKLAMA KURALLARI:
+- Paslanmaz çelik malzemeyi doğal bir şekilde belirt
+- Kararma yapmaz ve suya dayanıklı özelliklerini vurgula
+- Şık ve premium bir dil kullan
+- Türkçe, 80-100 kelime`
+      : 'Sen Bahar Accessory & Jewelry (bahartaki.com) için SEO içeriği üreten bir uzmansın. Bu marka paslanmaz çelik takı satmaktadır. Türkçe, kısa ve etkili yaz.';
 
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
