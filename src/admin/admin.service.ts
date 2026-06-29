@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order, PaymentStatus } from '../orders/entities/order.entity';
+import { OrderItem } from '../orders/entities/order-item.entity';
 import { Product } from '../products/entities/product.entity';
 import { User } from '../users/entities/user.entity';
 
@@ -11,6 +12,7 @@ const LOW_STOCK_THRESHOLD = 5;
 export class AdminService {
   constructor(
     @InjectRepository(Order) private readonly orderRepo: Repository<Order>,
+    @InjectRepository(OrderItem) private readonly orderItemRepo: Repository<OrderItem>,
     @InjectRepository(Product) private readonly productRepo: Repository<Product>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
@@ -131,8 +133,15 @@ export class AdminService {
   }
 
   async deleteOrder(orderId: string) {
-    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items'],
+    });
     if (!order) throw new Error('Sipariş bulunamadı');
+    // Önce order items'ı sil
+    if (order.items?.length) {
+      await this.orderItemRepo.remove(order.items);
+    }
     await this.orderRepo.remove(order);
     return { deleted: true, id: orderId };
   }
