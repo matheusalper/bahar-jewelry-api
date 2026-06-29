@@ -35,6 +35,13 @@ export class AdminController {
     return this.ordersService.updateOrderStatus(id, dto);
   }
 
+
+  // PUT /api/admin/orders/:id/tracking — kargo takip bilgisi ekle
+  @Put('orders/:id/tracking')
+  updateTracking(@Param('id') id: string, @Body() dto: { trackingNumber?: string; trackingUrl?: string; cargoCompany?: string }) {
+    return this.adminService.updateOrderTracking(id, dto);
+  }
+
   // DELETE /api/admin/orders/:id — siparişi sil
   @Delete('orders/:id')
   deleteOrder(@Param('id') id: string) {
